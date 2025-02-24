@@ -145,6 +145,8 @@ export default function AlertDetailsAppSection({ alert }: AppSectionProps) {
           endedAt: alertEnd,
         });
 
+        console.log(ruleParams);
+
         return (
           <EuiFlexItem key={`criterion-${index}`}>
             <EuiPanel hasBorder hasShadow={false}>

@@ -273,6 +273,8 @@ const UnifiedFieldListSidebarContainer = memo(
         buttonAddFieldVariant: stateService.creationOptions.buttonAddFieldVariant ?? 'primary',
       };
 
+      console.log(commonSidebarProps);
+
       if (stateService.creationOptions.showSidebarToggleButton) {
         commonSidebarProps.isSidebarCollapsed = isSidebarCollapsed;
         commonSidebarProps.onToggleSidebar = sidebarVisibility.toggle;

@@ -215,6 +215,7 @@ export const UnifiedFieldListSidebarComponent: React.FC<UnifiedFieldListSidebarP
       [searchMode, stateService.creationOptions.disableMultiFieldsGroupingByParent]
     );
 
+  // check here
   const { fieldListFiltersProps, fieldListGroupedProps, allFieldsModified } =
     useGroupedFields<DataViewField>({
       dataViewId: (searchMode === 'documents' && dataView?.id) || null, // passing `null` for text-based queries
@@ -236,6 +237,29 @@ export const UnifiedFieldListSidebarComponent: React.FC<UnifiedFieldListSidebarP
       getNewFieldsBySpec,
       additionalFieldGroups,
     });
+
+  console.log(
+    useGroupedFields<DataViewField>({
+      dataViewId: (searchMode === 'documents' && dataView?.id) || null, // passing `null` for text-based queries
+      allFields,
+      popularFieldsLimit:
+        searchMode !== 'documents' || stateService.creationOptions.disablePopularFields
+          ? 0
+          : popularFieldsLimit,
+      isAffectedByGlobalFilter,
+      services: {
+        dataViews,
+        core,
+      },
+      sortedSelectedFields: onSelectedFieldFilter ? undefined : selectedFieldsState.selectedFields,
+      onSelectedFieldFilter,
+      onSupportedFieldFilter:
+        stateService.creationOptions.onSupportedFieldFilter ?? onSupportedFieldFilter,
+      onOverrideFieldGroupDetails: stateService.creationOptions.onOverrideFieldGroupDetails,
+      getNewFieldsBySpec,
+      additionalFieldGroups,
+    })
+  );
 
   useEffect(() => {
     if (
@@ -365,6 +389,8 @@ export const UnifiedFieldListSidebarComponent: React.FC<UnifiedFieldListSidebarP
     }
   );
 
+  console.log('showFieldList', showFieldList);
+
   return (
     <EuiPageSidebar {...pageSidebarProps}>
       <EuiFlexGroup
@@ -466,7 +492,7 @@ function calculateMultiFields(
     };
     const value = map.get(parent) ?? [];
     value.push(multiField);
-    map.set(parent, value);
+    // map.set(parent, value);
   });
   return map;
 }

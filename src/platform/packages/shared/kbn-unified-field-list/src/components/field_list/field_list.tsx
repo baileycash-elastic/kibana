@@ -48,6 +48,7 @@ export const FieldList: FC<PropsWithChildren<FieldListProps>> = ({
   className,
   children,
 }) => {
+  console.log(children);
   return (
     <EuiFlexGroup
       gutterSize="none"

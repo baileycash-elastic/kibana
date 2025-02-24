@@ -188,6 +188,8 @@ export function useGroupedFields<T extends FieldListItem = DataViewField>({
 
     const smartFields = additionalFieldGroups?.smartFields || [];
 
+    console.log('rendered', groupedFields);
+
     let fieldGroupDefinitions: FieldListGroups<T> = {
       SpecialFields: {
         fields: groupedFields.specialFields,
