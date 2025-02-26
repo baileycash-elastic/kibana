@@ -17,7 +17,7 @@ Low-level building blocks
 provide greater flexibility, but require more code to stitch them together into a meaningful UX. This results in higher maintenance cost for consumers and greater UI/UX variability
 across Kibana.
 
-For example, if an application is using <DocLink id="kibBuildingBlocks" section="index-patterns" text="Index Patterns"/> and <DocLink id="kibBuildingBlocks" section="search-source" text="Search Source" />, their application would
+For example, if an application is using [Text Patterns](#text-patterns) and [Search Source](search-source), their application would
 automatically support runtime fields. If the app is instead using the lower-level <DocLink
   id="kibBuildingBlocks"
   section="search-strategy"
@@ -124,7 +124,10 @@ sharing and space isolation, and tags.
 
 ## Advanced Settings
 
-<DocLink id="kibDevTutorialAdvancedSettings" text="Advanced Settings and the uiSettings service" /> should be used if you need to add application-level configuration options. If you wanted to add a setting for listing a number of items per page in your TODO application, then `pageListing` would be a configuration option.
+<DocLink id="kibDevTutorialAdvancedSettings" text="Advanced Settings and the uiSettings service" /> should
+be used if you need to add application-level configuration options. If you wanted to add a setting for
+listing a number of items per page in your TODO application, then `pageListing` would be a configuration
+option.
 
 **Github labels**: `Team:Core`, `Feature:uiSettings`, `Feature:Advanced Settings`
 
@@ -142,7 +145,8 @@ application could register a UI Action called "View in Maps" to appear any time 
 
 ## Embeddables
 
-<DocLink id="kibDevDocsEmbeddables" text="Embeddables" /> help you integrate your application with the Dashboard application. Register your custom UI Widget as an Embeddable and users will
-be able to add it as a panel on a Dashboard. With a little extra work, it can also be exposed in Canvas workpads.
+<DocLink id="kibDevDocsEmbeddables" text="Embeddables" /> help you integrate your application with the
+Dashboard application. Register your custom UI Widget as an Embeddable and users will be able to add
+it as a panel on a Dashboard. With a little extra work, it can also be exposed in Canvas workpads.
 
 **Github labels**: `Team:AppServices`, `Feature:Embeddables`
