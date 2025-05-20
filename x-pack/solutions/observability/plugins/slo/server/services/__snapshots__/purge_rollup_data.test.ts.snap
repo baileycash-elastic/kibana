@@ -135,17 +135,23 @@ exports[`purge rollup data happy path successfully makes a query to remove SLI d
         "index": ".slo-observability.sli-v3*",
         "query": Object {
           "bool": Object {
-            "filter": Array [
+            "should": Array [
               Object {
-                "term": Object {
-                  "slo.id": "test6",
-                },
-              },
-              Object {
-                "range": Object {
-                  "@timestamp": Object {
-                    "lte": "2025-04-06T04:00:00.000Z",
-                  },
+                "bool": Object {
+                  "must": Array [
+                    Object {
+                      "term": Object {
+                        "slo.id": "test6",
+                      },
+                    },
+                    Object {
+                      "range": Object {
+                        "@timestamp": Object {
+                          "lte": "2025-04-06T04:00:00.000Z",
+                        },
+                      },
+                    },
+                  ],
                 },
               },
             ],
@@ -175,17 +181,23 @@ exports[`purge rollup data happy path successfully makes a query to remove SLI d
         "index": ".slo-observability.sli-v3*",
         "query": Object {
           "bool": Object {
-            "filter": Array [
+            "should": Array [
               Object {
-                "term": Object {
-                  "slo.id": "test7",
-                },
-              },
-              Object {
-                "range": Object {
-                  "@timestamp": Object {
-                    "lte": "2025-04-09T04:00:00.000Z",
-                  },
+                "bool": Object {
+                  "must": Array [
+                    Object {
+                      "term": Object {
+                        "slo.id": "test7",
+                      },
+                    },
+                    Object {
+                      "range": Object {
+                        "@timestamp": Object {
+                          "lte": "2025-04-09T04:00:00.000Z",
+                        },
+                      },
+                    },
+                  ],
                 },
               },
             ],

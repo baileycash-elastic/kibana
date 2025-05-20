@@ -43,7 +43,6 @@ const bulkPurgeRollupSchema = t.type({
 
 interface BulkPurgeRollupResponse {
   taskId?: DeleteByQueryResponse['task'];
-  taskIds?: Array<DeleteByQueryResponse['task']>;
 }
 
 type BulkPurgePolicyType = t.TypeOf<typeof bulkPurgePolicy>;

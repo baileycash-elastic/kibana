@@ -28,68 +28,62 @@ export class BulkPurgeRollupData {
     }
     const cycles = 'cycles' in params.purgePolicy ? params.purgePolicy.cycles : 0;
 
-    if (params.purgePolicy.purgeType === 'elapsed_window') {
-      const responses = await Promise.all(
-        slos.map(async (slo) => {
-          const duration = slo.timeWindow.duration;
-          const lookback = moment(Date.now())
-            .subtract(cycles * duration.asSeconds(), 's')
-            .startOf(duration.unit)
-            .toISOString();
-          return this.esClient.deleteByQuery({
-            index: SLI_DESTINATION_INDEX_PATTERN,
-            refresh: false,
-            wait_for_completion: false,
-            conflicts: 'proceed',
-            slices: 'auto',
-            query: {
-              bool: {
-                filter: [
-                  {
-                    term: { 'slo.id': slo.id },
-                  },
-                  {
-                    range: {
-                      '@timestamp': {
-                        lte: lookback,
-                      },
-                    },
-                  },
-                ],
-              },
-            },
-          });
-        })
-      );
-      return { taskIds: responses.map((response) => response.task) };
-    } else {
-      const lookback = this.getTimestamp(params.purgePolicy);
+    const response = await this.esClient.deleteByQuery({
+      index: SLI_DESTINATION_INDEX_PATTERN,
+      refresh: false,
+      wait_for_completion: false,
+      conflicts: 'proceed',
+      slices: 'auto',
+      query: {
+        bool: this.constructQuery(slos, params.purgePolicy, cycles),
+      },
+    });
 
-      const response = await this.esClient.deleteByQuery({
-        index: SLI_DESTINATION_INDEX_PATTERN,
-        refresh: false,
-        wait_for_completion: false,
-        conflicts: 'proceed',
-        slices: 'auto',
-        query: {
+    return { taskId: response.task };
+  }
+
+  private constructQuery(
+    slos: SLODefinition[],
+    purgePolicy: BulkPurgeRollupParams['purgePolicy'],
+    cycles: number
+  ) {
+    if (purgePolicy.purgeType === 'elapsed_window') {
+      return {
+        should: slos.map((slo) => ({
           bool: {
-            filter: [
+            must: [
               {
-                terms: { 'slo.id': slos.map((slo) => slo.id) },
+                term: { 'slo.id': slo.id },
               },
               {
                 range: {
                   '@timestamp': {
-                    lte: lookback,
+                    lte: moment(Date.now())
+                      .subtract(cycles * slo.timeWindow.duration.asSeconds(), 's')
+                      .startOf(slo.timeWindow.duration.unit)
+                      .toISOString(),
                   },
                 },
               },
             ],
           },
-        },
-      });
-
-      return { taskId: response.task };
+        })),
+      };
+    } else {
+      return {
+        filter: [
+          {
+            terms: { 'slo.id': slos.map((slo) => slo.id) },
+          },
+          {
+            range: {
+              '@timestamp': {
+                lte: this.getTimestamp(purgePolicy),
+              },
+            },
+          },
+        ],
+      };
     }
   }
 
