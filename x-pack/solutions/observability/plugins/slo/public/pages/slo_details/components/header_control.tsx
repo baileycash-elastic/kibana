@@ -80,7 +80,7 @@ export function HeaderControl({ slo }: Props) {
         type: 'delete',
         item: slo,
         onConfirm: () => {
-          navigate(basePath.prepend(paths.slos));
+          navigate(basePath.prepend(paths.slos()));
         },
       });
       removeDeleteQueryParam();
@@ -141,7 +141,7 @@ export function HeaderControl({ slo }: Props) {
         type: 'delete',
         item: slo,
         onConfirm: () => {
-          navigate(basePath.prepend(paths.slos));
+          navigate(basePath.prepend(paths.slos()));
           setIsPopoverOpen(false);
         },
       });

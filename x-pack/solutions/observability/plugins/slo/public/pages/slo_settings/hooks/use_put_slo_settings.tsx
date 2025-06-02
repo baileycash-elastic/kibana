@@ -37,7 +37,7 @@ export function usePutSloSettings() {
             defaultMessage: 'Success updated slo settings',
           }),
         });
-        navigateToUrl(http.basePath.prepend(paths.slos));
+        navigateToUrl(http.basePath.prepend(paths.slos()));
       },
       onError: (error, { settings }, context) => {
         toasts.addError(new Error(error.body?.message ?? error.message), {

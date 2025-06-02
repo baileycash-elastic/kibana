@@ -64,7 +64,7 @@ export function SloEditFormFooter({ slo, onSave }: Props) {
     if (isEditMode) {
       const processedValues = transformValuesToUpdateSLOInput(values);
       await updateSlo({ sloId: slo.id, slo: processedValues });
-      navigate(basePath.prepend(paths.slos));
+      navigate(basePath.prepend(paths.slos()));
     } else {
       const processedValues = transformCreateSLOFormToCreateSLOInput(values);
       const resp = await createSlo({ slo: processedValues });
@@ -74,7 +74,7 @@ export function SloEditFormFooter({ slo, onSave }: Props) {
       if (onSave) {
         onSave();
       } else {
-        navigate(basePath.prepend(paths.slos));
+        navigate(basePath.prepend(paths.slos()));
       }
     }
   }, [
@@ -115,7 +115,7 @@ export function SloEditFormFooter({ slo, onSave }: Props) {
             color="primary"
             data-test-subj="sloFormCancelButton"
             disabled={isCreateSloLoading || isUpdateSloLoading || isCreateBurnRateRuleLoading}
-            onClick={onSave ? () => onSave() : () => navigateToUrl(basePath.prepend(paths.slos))}
+            onClick={onSave ? () => onSave() : () => navigateToUrl(basePath.prepend(paths.slos()))}
           >
             {i18n.translate('xpack.slo.sloEdit.cancelButton', {
               defaultMessage: 'Cancel',

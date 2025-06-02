@@ -52,7 +52,7 @@ export function SlosWelcomePage() {
 
   useEffect(() => {
     if (hasSlosAndPermissions) {
-      navigateToUrl(basePath.prepend(paths.slos));
+      navigateToUrl(basePath.prepend(paths.slos()));
     }
   }, [basePath, navigateToUrl, hasSlosAndPermissions]);
 

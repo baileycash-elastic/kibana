@@ -8,6 +8,7 @@
 import { ALL_VALUE } from '@kbn/slo-schema/src/schema/common';
 
 export const SLOS_BASE_PATH = '/app/slos';
+export const SLOS_HOME_PATH = '/:tabId?';
 export const SLOS_PATH = '/' as const;
 export const SLOS_WELCOME_PATH = '/welcome' as const;
 export const SLO_DETAIL_PATH = '/:sloId/:tabId?' as const;
@@ -18,10 +19,14 @@ export const SLO_SETTINGS_PATH = '/settings' as const;
 export const SLOS_MANAGEMENT_PATH = '/management' as const;
 
 export const paths = {
-  slos: `${SLOS_BASE_PATH}${SLOS_PATH}`,
+  slos: (tabId?: string) => {
+    if (tabId) {
+      return `${SLOS_BASE_PATH}${SLOS_PATH}${tabId}`;
+    }
+    return `${SLOS_BASE_PATH}${SLOS_PATH}`;
+  },
   slosSettings: `${SLOS_BASE_PATH}${SLO_SETTINGS_PATH}`,
   slosWelcome: `${SLOS_BASE_PATH}${SLOS_WELCOME_PATH}`,
-  slosManagement: `${SLOS_BASE_PATH}${SLOS_MANAGEMENT_PATH}`,
   sloCreate: `${SLOS_BASE_PATH}${SLO_CREATE_PATH}`,
   sloCreateWithEncodedForm: (encodedParams: string) =>
     `${SLOS_BASE_PATH}${SLO_CREATE_PATH}?_a=${encodedParams}`,

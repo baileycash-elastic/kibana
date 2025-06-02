@@ -158,7 +158,7 @@ function getBreadcrumbs(
 ): ChromeBreadcrumb[] {
   return [
     {
-      href: basePath.prepend(paths.slos),
+      href: basePath.prepend(paths.slos()),
       text: i18n.translate('xpack.slo.breadcrumbs.slosLinkText', {
         defaultMessage: 'SLOs',
       }),

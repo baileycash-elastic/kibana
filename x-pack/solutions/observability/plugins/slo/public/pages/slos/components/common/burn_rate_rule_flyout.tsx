@@ -43,7 +43,7 @@ export function BurnRateRuleFlyout({
       queryClient.invalidateQueries({ queryKey: sloKeys.rules(), exact: false });
       setIsAddRuleFlyoutOpen(false);
     } else {
-      navigateToUrl(basePath.prepend(paths.slos));
+      navigateToUrl(basePath.prepend(paths.slos()));
     }
   };
 
@@ -51,7 +51,7 @@ export function BurnRateRuleFlyout({
     if (setIsAddRuleFlyoutOpen) {
       setIsAddRuleFlyoutOpen(false);
     } else {
-      navigateToUrl(basePath.prepend(paths.slos));
+      navigateToUrl(basePath.prepend(paths.slos()));
     }
   };
 

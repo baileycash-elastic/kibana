@@ -36,7 +36,7 @@ export function SloEditPage() {
   useBreadcrumbs(
     [
       {
-        href: basePath.prepend(paths.slos),
+        href: basePath.prepend(paths.slos()),
         text: i18n.translate('xpack.slo.breadcrumbs.sloLabel', {
           defaultMessage: 'SLOs',
         }),
@@ -69,7 +69,7 @@ export function SloEditPage() {
     }
 
     if (permissions?.hasAllWriteRequested === false) {
-      navigateToUrl(basePath.prepend(paths.slos));
+      navigateToUrl(basePath.prepend(paths.slos()));
     }
   }, [hasRightLicense, permissions, navigateToUrl, basePath]);
 

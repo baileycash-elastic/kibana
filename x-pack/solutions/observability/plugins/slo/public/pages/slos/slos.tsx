@@ -7,23 +7,28 @@
 
 import { i18n } from '@kbn/i18n';
 import React, { useEffect } from 'react';
-import { EuiSpacer } from '@elastic/eui';
 import { useBreadcrumbs } from '@kbn/observability-shared-plugin/public';
-import { SLOsOverview } from './components/slos_overview/slos_overview';
 import { paths } from '../../../common/locators/paths';
 import { HeaderMenu } from '../../components/header_menu/header_menu';
 import { SloOutdatedCallout } from '../../components/slo/slo_outdated_callout';
 import { useFetchSloList } from '../../hooks/use_fetch_slo_list';
+import { useSelectedTab } from './hooks/use_selected_tab';
 import { useLicense } from '../../hooks/use_license';
 import { usePermissions } from '../../hooks/use_permissions';
 import { usePluginContext } from '../../hooks/use_plugin_context';
 import { useKibana } from '../../hooks/use_kibana';
 import { CreateSloBtn } from './components/common/create_slo_btn';
 import { FeedbackButton } from './components/common/feedback_button';
-import { SloList } from './components/slo_list';
-import { SloListSearchBar } from './components/slo_list_search_bar';
+import { useSloHomeTabs } from './hooks/use_slo_home_tabs';
+import { SloManagementPage } from '../slo_management/slo_management_page';
+import { SLOListContainer } from './components/slo_list_container';
 
 export const SLO_PAGE_ID = 'slo-page-container';
+
+export const INSTANCES_TAB_ID = 'definition';
+export const MANAGEMENT_TAB_ID = 'alerts';
+
+export type SloTabId = typeof INSTANCES_TAB_ID | typeof MANAGEMENT_TAB_ID;
 
 export function SlosPage() {
   const {
@@ -38,10 +43,18 @@ export function SlosPage() {
   const { isLoading, isError, data: sloList } = useFetchSloList({ perPage: 0 });
   const { total } = sloList ?? { total: 0 };
 
+  const { selectedTabId } = useSelectedTab();
+
+  const { tabs } = useSloHomeTabs({
+    selectedTabId,
+  });
+
+  console.log(selectedTabId);
+
   useBreadcrumbs(
     [
       {
-        href: basePath.prepend(paths.slos),
+        href: basePath.prepend(paths.slos()),
         text: i18n.translate('xpack.slo.breadcrumbs.slosLinkText', {
           defaultMessage: 'SLOs',
         }),
@@ -67,14 +80,12 @@ export function SlosPage() {
       pageHeader={{
         pageTitle: i18n.translate('xpack.slo.slosPage.', { defaultMessage: 'SLOs' }),
         rightSideItems: [<CreateSloBtn />, <FeedbackButton />],
+        tabs,
       }}
-      topSearchBar={<SloListSearchBar />}
     >
       <HeaderMenu />
       <SloOutdatedCallout />
-      <SLOsOverview />
-      <EuiSpacer size="m" />
-      <SloList />
+      {selectedTabId === MANAGEMENT_TAB_ID ? <SloManagementPage /> : <SLOListContainer />}
     </ObservabilityPageTemplate>
   );
 }
