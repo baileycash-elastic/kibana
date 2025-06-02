@@ -49,8 +49,6 @@ export function SlosPage() {
     selectedTabId,
   });
 
-  console.log(selectedTabId);
-
   useBreadcrumbs(
     [
       {
