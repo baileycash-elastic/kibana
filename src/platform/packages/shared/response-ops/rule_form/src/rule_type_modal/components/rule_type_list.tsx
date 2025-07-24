@@ -14,17 +14,15 @@ import {
   EuiFlexItem,
   EuiFacetGroup,
   EuiFacetButton,
-  EuiCard,
-  EuiSpacer,
-  EuiText,
   EuiEmptyPrompt,
   EuiButton,
   useEuiTheme,
-  EuiToolTip,
+  EuiSpacer,
 } from '@elastic/eui';
 import { omit } from 'lodash';
-import { PRODUCER_DISPLAY_NAMES } from '../../common/i18n';
 import { RuleTypeWithDescription, RuleTypeCountsByProducer } from '../types';
+import { PRODUCER_DISPLAY_NAMES } from '../../common/i18n';
+import { RuleCard } from './rule_card';
 
 interface RuleTypeListProps {
   ruleTypes: RuleTypeWithDescription[];
@@ -35,10 +33,6 @@ interface RuleTypeListProps {
   onClearFilters: () => void;
   showCategories: boolean;
 }
-
-const producerToDisplayName = (producer: string) => {
-  return Reflect.get(PRODUCER_DISPLAY_NAMES, producer) ?? producer;
-};
 
 /**
  * Sorts an array of objects (ruleTypes) based on two criteria:
@@ -53,6 +47,10 @@ const sortRuleTypes = (a: RuleTypeWithDescription, b: RuleTypeWithDescription) =
     return a.name.localeCompare(b.name);
   }
   return a.enabledInLicense ? -1 : 1;
+};
+
+const producerToDisplayName = (producer: string) => {
+  return Reflect.get(PRODUCER_DISPLAY_NAMES, producer) ?? producer;
 };
 
 export const RuleTypeList: React.FC<RuleTypeListProps> = ({
@@ -86,28 +84,6 @@ export const RuleTypeList: React.FC<RuleTypeListProps> = ({
   );
 
   const onClickAll = useCallback(() => onFilterByProducer(null), [onFilterByProducer]);
-
-  const ruleCard = (rule: RuleTypeWithDescription) => (
-    <EuiCard
-      titleSize="xs"
-      textAlign="left"
-      hasBorder
-      title={rule.name}
-      onClick={() => onSelectRuleType(rule.id)}
-      description={rule.description}
-      style={{ marginRight: '8px', flexGrow: 0 }}
-      data-test-subj={`${rule.id}-SelectOption`}
-      isDisabled={!rule.enabledInLicense}
-    >
-      <EuiText
-        color="subdued"
-        size="xs"
-        style={{ textTransform: 'uppercase', fontWeight: euiTheme.font.weight.bold }}
-      >
-        {producerToDisplayName(rule.producer)}
-      </EuiText>
-    </EuiCard>
-  );
 
   return (
     <EuiFlexGroup
@@ -180,24 +156,11 @@ export const RuleTypeList: React.FC<RuleTypeListProps> = ({
         )}
         {ruleTypesList.map((rule) => (
           <React.Fragment key={rule.id}>
-            {rule.enabledInLicense ? (
-              ruleCard(rule)
-            ) : (
-              <EuiToolTip
-                position="top"
-                content={i18n.translate(
-                  'responseOpsRuleForm.components.ruleTypeModal.minimumRequiredLicenseMessage',
-                  {
-                    defaultMessage: 'This rule requires a {minimumLicenseRequired} license.',
-                    values: {
-                      minimumLicenseRequired: rule.minimumLicenseRequired,
-                    },
-                  }
-                )}
-              >
-                <>{ruleCard(rule)} </>
-              </EuiToolTip>
-            )}
+            <RuleCard
+              rule={rule}
+              onSelectRuleType={onSelectRuleType}
+              producerToDisplayName={producerToDisplayName}
+            />
             <EuiSpacer size="s" />
           </React.Fragment>
         ))}
