@@ -6,6 +6,8 @@
  */
 
 import { lazy } from 'react';
-import type { AlertActions as AlertActionsType } from './alert_actions';
+import type { CasesAlertActions as CasesAlertActionsType } from './cases_alert_actions';
 
-export const AlertActions = lazy(() => import('./alert_actions')) as AlertActionsType;
+export const CasesAlertActions = lazy(
+  () => import('./cases_alert_actions')
+) as CasesAlertActionsType;

@@ -17,7 +17,7 @@ import { CASE_VIEW_PAGE_TABS } from '../../../../common/types';
 import { useKibana } from '../../../common/lib/kibana';
 import { useGetFeatureIds } from '../../../containers/use_get_feature_ids';
 import { CaseViewTabs } from '../case_view_tabs';
-import type { CaseViewAlertsTableProps } from '../types';
+import type { CaseViewAlertsTableProps } from '../../../../common';
 import { CaseViewAlertsEmpty } from './case_view_alerts_empty';
 import { getManualAlertIds } from './helpers';
 

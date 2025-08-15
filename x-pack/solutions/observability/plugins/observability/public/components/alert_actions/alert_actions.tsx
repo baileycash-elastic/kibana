@@ -5,41 +5,21 @@
  * 2.0.
  */
 
-import {
-  EuiButtonIcon,
-  EuiFlexItem,
-  EuiContextMenuItem,
-  EuiContextMenuPanel,
-  EuiPopover,
-  EuiToolTip,
-} from '@elastic/eui';
+import { EuiButtonIcon, EuiFlexItem, EuiToolTip } from '@elastic/eui';
 
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { i18n } from '@kbn/i18n';
 import { useRouteMatch } from 'react-router-dom';
-import {
-  RELATED_ALERTS_TABLE_ID,
-  SLO_ALERTS_TABLE_ID,
-} from '@kbn/observability-shared-plugin/common';
-import { DefaultAlertActions } from '@kbn/response-ops-alerts-table/components/default_alert_actions';
+import { SLO_ALERTS_TABLE_ID } from '@kbn/observability-shared-plugin/common';
 import { ALERT_UUID } from '@kbn/rule-data-utils';
-import {
-  useDeletePropertyAction,
-  DeleteAttachmentConfirmationModal,
-} from '@kbn/cases-plugin/public';
-import { useCaseActions } from '../../hooks/use_case_actions';
-import { RULE_DETAILS_PAGE_ID } from '../../pages/rule_details/constants';
-import { paths, SLO_DETAIL_PATH } from '../../../common/locators/paths';
+
+import { SLO_DETAIL_PATH } from '../../../common/locators/paths';
 import { parseAlert } from '../../pages/alerts/helpers/parse_alert';
-import {
-  GetObservabilityAlertsTableProp,
-  ObservabilityAlertsTableContext,
-  observabilityFeatureId,
-} from '../..';
-import { ALERT_DETAILS_PAGE_ID } from '../../pages/alert_details/alert_details';
-import { useKibana } from '../../utils/kibana_react';
+import { GetObservabilityAlertsTableProp } from '../..';
+import AlertActionsPopover from './alert_actions_popover';
 
 export function AlertActions({
+  actionsMenuItems,
   observabilityRuleTypeRegistry,
   alert,
   caseData,
@@ -48,35 +28,19 @@ export function AlertActions({
   openAlertInFlyout,
   parentAlert,
   services,
+  config,
   ...rest
 }: React.ComponentProps<GetObservabilityAlertsTableProp<'renderActionsCell'>>) {
   const {
     http: {
       basePath: { prepend },
     },
-    cases,
   } = services;
   const isSLODetailsPage = useRouteMatch(SLO_DETAIL_PATH);
-  const { telemetryClient } = useKibana().services;
 
   const isInApp = Boolean(tableId === SLO_ALERTS_TABLE_ID && isSLODetailsPage);
 
-  const userCasesPermissions = cases?.helpers.canUseCases([observabilityFeatureId]);
   const [viewInAppUrl, setViewInAppUrl] = useState<string>();
-
-  const alertAttachment = useMemo(() => {
-    return caseData?.comments?.find((comment) => {
-      if ('alertId' in comment && comment.alertId.includes(alert._id)) {
-        return comment.alertId.includes(alert._id);
-      }
-    });
-  }, [caseData, alert._id]);
-
-  const { showDeletionModal, onModalOpen, onConfirm, onCancel } = useDeletePropertyAction({
-    onDelete: () => {
-      removeAlertsFromCase();
-    },
-  });
 
   const parseObservabilityAlert = useMemo(
     () => parseAlert(observabilityRuleTypeRegistry),
@@ -103,130 +67,6 @@ export function AlertActions({
       setViewInAppUrl(alertLink);
     }
   }, [observabilityAlert.link, observabilityAlert.hasBasePath, prepend]);
-
-  const onAddToCase = useCallback(
-    ({ isNewCase }: { isNewCase: boolean }) => {
-      if (tableId === RELATED_ALERTS_TABLE_ID) {
-        telemetryClient.reportRelatedAlertAddedToCase(isNewCase);
-      }
-      refresh?.();
-    },
-    [refresh, telemetryClient, tableId]
-  );
-
-  const {
-    isPopoverOpen,
-    setIsPopoverOpen,
-    handleAddToExistingCaseClick,
-    handleAddToNewCaseClick,
-    removeAlertsFromCase,
-  } = useCaseActions({
-    onAddToCase,
-    alerts: [alert],
-    services: {
-      cases,
-    },
-    caseData,
-    alertAttachment,
-  });
-
-  const closeActionsPopover = useCallback(() => {
-    setIsPopoverOpen(false);
-  }, [setIsPopoverOpen]);
-
-  const toggleActionsPopover = () => {
-    setIsPopoverOpen(!isPopoverOpen);
-  };
-
-  const removeFromCaseAction = [
-    ...(alertAttachment
-      ? [
-          <EuiContextMenuItem
-            data-test-subj="remove-from-case-action"
-            key="removeFromCase"
-            onClick={onModalOpen}
-            size="s"
-          >
-            {i18n.translate('xpack.observability.alerts.actions.removeFromCase', {
-              defaultMessage: 'Remove from case',
-            })}
-          </EuiContextMenuItem>,
-        ]
-      : []),
-  ];
-
-  const actionsMenuItems = [
-    ...(userCasesPermissions?.createComment && userCasesPermissions?.read
-      ? [
-          <EuiContextMenuItem
-            data-test-subj="add-to-existing-case-action"
-            key="addToExistingCase"
-            onClick={handleAddToExistingCaseClick}
-            size="s"
-          >
-            {i18n.translate('xpack.observability.alerts.actions.addToCase', {
-              defaultMessage: 'Add to existing case',
-            })}
-          </EuiContextMenuItem>,
-          <EuiContextMenuItem
-            data-test-subj="add-to-new-case-action"
-            key="addToNewCase"
-            onClick={handleAddToNewCaseClick}
-            size="s"
-          >
-            {i18n.translate('xpack.observability.alerts.actions.addToNewCase', {
-              defaultMessage: 'Add to new case',
-            })}
-          </EuiContextMenuItem>,
-          ...removeFromCaseAction,
-        ]
-      : []),
-    useMemo(
-      () => (
-        <DefaultAlertActions<ObservabilityAlertsTableContext>
-          observabilityRuleTypeRegistry={observabilityRuleTypeRegistry}
-          key="defaultRowActions"
-          onActionExecuted={closeActionsPopover}
-          isAlertDetailsEnabled={true}
-          resolveRulePagePath={(ruleId, currentPageId) =>
-            currentPageId !== RULE_DETAILS_PAGE_ID ? paths.observability.ruleDetails(ruleId) : null
-          }
-          resolveAlertPagePath={(alertId, currentPageId) =>
-            currentPageId !== ALERT_DETAILS_PAGE_ID
-              ? paths.observability.alertDetails(alertId)
-              : null
-          }
-          tableId={tableId}
-          refresh={refresh}
-          alert={alert}
-          openAlertInFlyout={openAlertInFlyout}
-          services={services}
-          caseData={caseData}
-          {...rest}
-        />
-      ),
-      [
-        alert,
-        caseData,
-        closeActionsPopover,
-        observabilityRuleTypeRegistry,
-        openAlertInFlyout,
-        refresh,
-        services,
-        rest,
-        tableId,
-      ]
-    ),
-  ];
-
-  const actionsToolTip =
-    actionsMenuItems.length <= 0
-      ? i18n.translate('xpack.observability.alertsTable.notEnoughPermissions', {
-          defaultMessage: 'Additional privileges required',
-        })
-      : i18n.translate('xpack.observability.alertsTable.moreActionsTextLabel', {
-          defaultMessage: 'More actions',
-        });
 
   const onExpandEvent = () => {
     const parsedAlert = parseAlert(observabilityRuleTypeRegistry)(alert);
@@ -279,47 +119,20 @@ export function AlertActions({
         }}
         grow={parentAlert ? false : undefined}
       >
-        <EuiPopover
-          anchorPosition="downLeft"
-          button={
-            <EuiToolTip content={actionsToolTip} disableScreenReaderOutput>
-              <EuiButtonIcon
-                aria-label={actionsToolTip}
-                color="text"
-                data-test-subj="alertsTableRowActionMore"
-                display="empty"
-                iconType="boxesHorizontal"
-                onClick={toggleActionsPopover}
-                size="s"
-              />
-            </EuiToolTip>
-          }
-          closePopover={closeActionsPopover}
-          isOpen={isPopoverOpen}
-          panelPaddingSize="none"
-        >
-          <EuiContextMenuPanel
-            size="s"
-            items={actionsMenuItems}
-            data-test-subj="alertsTableActionsMenu"
-          />
-        </EuiPopover>
-      </EuiFlexItem>
-      {showDeletionModal && (
-        <DeleteAttachmentConfirmationModal
-          onCancel={onCancel}
-          onConfirm={onConfirm}
-          confirmButtonText={i18n.translate(
-            'xpack.observability.alerts.actions.removeFromCaseConfirm',
-            {
-              defaultMessage: 'Remove',
-            }
-          )}
-          title={i18n.translate('xpack.observability.alerts.actions.removeFromCaseTitle', {
-            defaultMessage: 'Remove alert from case',
-          })}
+        <AlertActionsPopover
+          observabilityRuleTypeRegistry={observabilityRuleTypeRegistry}
+          alert={alert}
+          caseData={caseData}
+          tableId={tableId}
+          refresh={refresh}
+          actionsMenuItems={actionsMenuItems}
+          openAlertInFlyout={openAlertInFlyout}
+          parentAlert={parentAlert}
+          services={services}
+          config={config}
+          {...rest}
         />
-      )}
+      </EuiFlexItem>
     </>
   );
 }

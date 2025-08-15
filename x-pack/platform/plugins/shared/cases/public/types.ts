@@ -62,6 +62,7 @@ import type {
   ExternalReferenceNoSOAttachmentPayload,
   ExternalReferenceSOAttachmentPayload,
 } from '../common/types/domain';
+import { UseRemoveAlertsFromCase } from './components/remove_from_case/remove_alert_from_case';
 
 export interface CasesPublicSetupDependencies {
   files: FilesSetup;
@@ -158,6 +159,7 @@ export interface CasesPublicStart {
     useCasesAddToNewCaseFlyout: UseCasesAddToNewCaseFlyout;
     useCasesAddToExistingCaseModal: UseCasesAddToExistingCaseModal;
     useIsAddToCaseOpen: UseIsAddToCaseOpen;
+    useRemoveAlertsFromCase: UseRemoveAlertsFromCase;
   };
   helpers: {
     /**

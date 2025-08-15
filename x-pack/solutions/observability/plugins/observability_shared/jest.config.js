@@ -18,4 +18,5 @@ module.exports = {
   collectCoverageFrom: [
     '<rootDir>/x-pack/solutions/observability/plugins/observability_shared/{common,public,server}/**/*.{js,ts,tsx}',
   ],
+  testMatch: ['<rootDir>/x-pack/solutions/observability/plugins/observability_shared/public/pages/cases/components/cases_alert_actions.test.tsx']
 };

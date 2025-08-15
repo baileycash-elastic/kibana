@@ -5,25 +5,18 @@
  * 2.0.
  */
 
-import {
-  CaseAttachmentsWithoutOwner,
-  useDeleteComment,
-  useUpdateAlertComment,
-} from '@kbn/cases-plugin/public';
+import { CaseAttachmentsWithoutOwner } from '@kbn/cases-plugin/public';
 import { useCallback, useState } from 'react';
-import { AttachmentType, CaseUI } from '@kbn/cases-plugin/common';
-import { i18n } from '@kbn/i18n';
+import { AttachmentType } from '@kbn/cases-plugin/common';
 import type { Alert } from '@kbn/alerting-types';
 import { CasesService } from '@kbn/response-ops-alerts-table/types';
-import { AttachmentUI } from '@kbn/cases-plugin/common/ui';
 import { EventNonEcsData } from '../../common/typings';
 
 export const useCaseActions = ({
   alerts,
   onAddToCase,
   services,
-  caseData,
-  alertAttachment,
+  caseId,
 }: {
   alerts: Alert[];
   onAddToCase?: ({ isNewCase }: { isNewCase: boolean }) => void;
@@ -33,8 +26,7 @@ export const useCaseActions = ({
      */
     cases?: CasesService;
   };
-  caseData?: CaseUI;
-  alertAttachment?: AttachmentUI;
+  caseId?: string;
 }) => {
   const { cases } = services;
   const [isPopoverOpen, setIsPopoverOpen] = useState<boolean>(false);
@@ -43,38 +35,6 @@ export const useCaseActions = ({
     onAddToCase?.({ isNewCase: false });
   }, [onAddToCase]);
 
-  const { mutateAsync: deleteComment } = useDeleteComment();
-  const { mutateAsync: updateComment } = useUpdateAlertComment();
-
-  const removalSuccessToast = i18n.translate(
-    'xpack.observability.alerts.actions.removeFromCaseSuccess',
-    { defaultMessage: 'Alert removed from case' }
-  );
-
-  const removeAlertsFromCase = () => {
-    alerts.forEach((alert) => {
-      if (caseData?.id && alertAttachment?.id && 'alertId' in alertAttachment) {
-        const { alertId, index } = alertAttachment;
-        if (Array.isArray(alertId) && Array.isArray(index) && alertId.length > 1) {
-          const alertIdx = alertId.indexOf(alert._id);
-          alertId.splice(alertIdx, 1);
-          index.splice(alertIdx, 1);
-          updateComment({
-            caseId: caseData.id,
-            commentUpdate: alertAttachment,
-            successToasterTitle: removalSuccessToast,
-          });
-        } else {
-          deleteComment({
-            caseId: caseData.id,
-            commentId: alertAttachment.id,
-            successToasterTitle: removalSuccessToast,
-          });
-        }
-        closeActionsPopover();
-      }
-    });
-  };
   const onAddToNewCase = useCallback(() => {
     onAddToCase?.({ isNewCase: true });
   }, [onAddToCase]);
@@ -105,6 +65,10 @@ export const useCaseActions = ({
   const closeActionsPopover = () => {
     setIsPopoverOpen(false);
   };
+
+  const removeAlertsFromCase = useCallback(() => {
+    return cases?.hooks.useRemoveAlertsFromCase(alerts[0]._id, caseId ?? '');
+  }, [alerts, caseId, cases]);
 
   const handleAddToNewCaseClick = () => {
     createCaseFlyout?.open({ attachments: getCaseAttachments() });

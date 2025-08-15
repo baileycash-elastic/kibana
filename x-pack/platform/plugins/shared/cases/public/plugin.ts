@@ -39,6 +39,7 @@ import type {
 } from './types';
 import { registerSystemActions } from './components/system_actions';
 import { registerAnalytics } from './analytics';
+import { useRemoveAlertsFromCase } from './components/remove_from_case/remove_alert_from_case';
 
 /**
  * @public
@@ -197,6 +198,7 @@ export class CasesUiPlugin
         useCasesAddToNewCaseFlyout,
         useCasesAddToExistingCaseModal,
         useIsAddToCaseOpen,
+        useRemoveAlertsFromCase,
       },
       helpers: {
         canUseCases: canUseCases(core.application.capabilities),

@@ -93,6 +93,8 @@ type UseCasesAddToExistingCaseModal = (
   close: () => void;
 };
 
+type UseRemoveAlertsFromCase = (alertId: string, caseId: string) => void;
+
 export interface Ecs {
   _id: string;
   _index?: string;
@@ -116,6 +118,7 @@ export interface CasesService {
   hooks: {
     useCasesAddToNewCaseFlyout: UseCasesAddToNewCaseFlyout;
     useCasesAddToExistingCaseModal: UseCasesAddToExistingCaseModal;
+    useRemoveAlertsFromCase: UseRemoveAlertsFromCase;
   };
   helpers: {
     groupAlertsByRule: (items: any[]) => any[];

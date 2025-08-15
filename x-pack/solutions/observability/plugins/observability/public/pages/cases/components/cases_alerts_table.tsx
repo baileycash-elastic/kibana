@@ -8,8 +8,8 @@
 import React from 'react';
 import { CaseViewAlertsTableProps } from '@kbn/cases-plugin/common';
 import { useKibana } from '../../../utils/kibana_react';
-import { AlertActions } from './alert_actions';
 import { GetObservabilityAlertsTableProp, ObservabilityAlertsTable } from '../../..';
+import { CasesAlertActions } from './cases_alert_actions_lazy';
 
 export function CasesAlertsTable(props: CaseViewAlertsTableProps) {
   const { cases, data, http, notifications, fieldFormats, application, licensing, settings } =
@@ -18,7 +18,7 @@ export function CasesAlertsTable(props: CaseViewAlertsTableProps) {
   function AlertActionsComponent(
     actionsProps: React.ComponentProps<GetObservabilityAlertsTableProp<'renderActionsCell'>>
   ) {
-    return <AlertActions caseData={props.caseData} {...actionsProps} />;
+    return <CasesAlertActions caseData={props.caseData} {...actionsProps} />;
   }
 
   return (
