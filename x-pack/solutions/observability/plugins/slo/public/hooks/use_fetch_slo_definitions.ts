@@ -21,6 +21,7 @@ export interface UseFetchSloDefinitionsResponse {
 interface SLODefinitionParams {
   name?: string;
   includeOutdatedOnly?: boolean;
+  getHealth?: boolean;
   tags?: string[];
   page?: number;
   perPage?: number;
@@ -29,6 +30,7 @@ interface SLODefinitionParams {
 export function useFetchSloDefinitions({
   name = '',
   includeOutdatedOnly = false,
+  getHealth = false,
   tags = [],
   page = 1,
   perPage = 100,
@@ -46,6 +48,7 @@ export function useFetchSloDefinitions({
             query: {
               ...(search !== undefined && { search }),
               ...(!!includeOutdatedOnly && { includeOutdatedOnly }),
+              ...(!!getHealth && { getHealth }),
               ...(validTags?.length && { tags: validTags }),
               ...(page !== undefined && { page: String(page) }),
               ...(perPage !== undefined && { perPage: String(perPage) }),

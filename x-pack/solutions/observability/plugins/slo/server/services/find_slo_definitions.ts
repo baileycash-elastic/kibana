@@ -11,7 +11,9 @@ import type {
   Pagination,
 } from '@kbn/slo-schema';
 import { findSloDefinitionsResponseSchema } from '@kbn/slo-schema';
+import type { IScopedClusterClient } from '@kbn/core/server';
 import { IllegalArgumentError } from '../errors';
+import { GetSLOHealth } from './get_slo_health';
 import type { SLORepository } from './slo_repository';
 
 const MAX_PER_PAGE = 1000;
@@ -19,7 +21,10 @@ const DEFAULT_PER_PAGE = 100;
 const DEFAULT_PAGE = 1;
 
 export class FindSLODefinitions {
-  constructor(private repository: SLORepository) {}
+  constructor(
+    private repository: SLORepository,
+    private scopedClusterClient: IScopedClusterClient
+  ) {}
 
   public async execute(params: FindSLODefinitionsParams): Promise<FindSLODefinitionsResponse> {
     const requestTags: string[] = params.tags?.split(',') ?? [];
@@ -28,6 +33,20 @@ export class FindSLODefinitions {
       includeOutdatedOnly: params.includeOutdatedOnly === true,
       tags: requestTags,
     });
+
+    if (params.getHealth) {
+      const getSloHealthData = new GetSLOHealth(this.scopedClusterClient);
+      const sloIds = result.results.map((slo) => ({
+        sloId: slo.id,
+        sloInstanceId: '*',
+      }));
+      const healthData = await getSloHealthData.execute({ list: sloIds });
+      result.results = result.results.map((slo) => ({
+        ...slo,
+        health: healthData.data.find((health: { sloId: string }) => health.sloId === slo.id)
+          ?.health,
+      }));
+    }
     return findSloDefinitionsResponseSchema.encode(result);
   }
 }

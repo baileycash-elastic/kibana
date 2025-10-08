@@ -56,6 +56,7 @@ export function SloManagementTable() {
     name: search,
     tags,
     includeOutdatedOnly,
+    getHealth: true,
   });
   const { tasks } = useBulkOperation();
 
