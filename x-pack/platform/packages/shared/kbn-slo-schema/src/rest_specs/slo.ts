@@ -9,9 +9,11 @@ import * as t from 'io-ts';
 import {
   allOrAnyString,
   groupingsSchema,
+  healthStatusSchema,
   metaSchema,
   remoteSchema,
   sloDefinitionSchema,
+  stateSchema,
   summarySchema,
 } from '../schema';
 
@@ -24,8 +26,21 @@ const sloWithDataResponseSchema = t.intersection([
   }),
 ]);
 
+const sloWithDataWithHealthResponseSchema = t.intersection([
+  sloDefinitionSchema,
+  t.partial({
+    state: stateSchema,
+    health: t.type({
+      overall: healthStatusSchema,
+      rollup: healthStatusSchema,
+      summary: healthStatusSchema,
+    }),
+  }),
+]);
+
 type SLODefinitionResponse = t.OutputOf<typeof sloDefinitionSchema>;
+type SLODefinitionWithHealthResponse = t.OutputOf<typeof sloWithDataWithHealthResponseSchema>;
 type SLOWithSummaryResponse = t.OutputOf<typeof sloWithDataResponseSchema>;
 
 export { sloWithDataResponseSchema };
-export type { SLODefinitionResponse, SLOWithSummaryResponse };
+export type { SLODefinitionResponse, SLOWithSummaryResponse, SLODefinitionWithHealthResponse };

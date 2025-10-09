@@ -41,11 +41,16 @@ export class FindSLODefinitions {
         sloInstanceId: '*',
       }));
       const healthData = await getSloHealthData.execute({ list: slos });
-      result.results = result.results.map((slo) => ({
-        ...slo,
-        health: healthData.data.find((health: { sloId: string }) => health.sloId === slo.id)
-          ?.health,
-      }));
+      result.results = result.results.map((slo) => {
+        const sloHealthData = healthData.data.find(
+          (health: { sloId: string }) => health.sloId === slo.id
+        );
+        return {
+          ...slo,
+          health: sloHealthData?.health,
+          state: sloHealthData?.state,
+        };
+      });
     }
     return findSloDefinitionsResponseSchema.encode(result);
   }

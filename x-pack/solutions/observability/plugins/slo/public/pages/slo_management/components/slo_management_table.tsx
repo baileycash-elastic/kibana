@@ -23,7 +23,7 @@ import {
   EuiText,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
-import type { SLODefinitionResponse } from '@kbn/slo-schema';
+import type { SLODefinitionWithHealthResponse } from '@kbn/slo-schema';
 import { ALL_VALUE } from '@kbn/slo-schema';
 import React, { useState } from 'react';
 import { sloPaths } from '../../../../common';
@@ -60,15 +60,15 @@ export function SloManagementTable() {
   });
   const { tasks } = useBulkOperation();
 
-  const [selectedItems, setSelectedItems] = useState<SLODefinitionResponse[]>([]);
+  const [selectedItems, setSelectedItems] = useState<SLODefinitionWithHealthResponse[]>([]);
 
-  const onSelectionChange = (items: SLODefinitionResponse[]) => {
+  const onSelectionChange = (items: SLODefinitionWithHealthResponse[]) => {
     setSelectedItems(items);
   };
 
-  const selection: EuiTableSelectionType<SLODefinitionResponse> = {
+  const selection: EuiTableSelectionType<SLODefinitionWithHealthResponse> = {
     selected: selectedItems,
-    selectable: (item: SLODefinitionResponse) => {
+    selectable: (item: SLODefinitionWithHealthResponse) => {
       return !tasks.find(
         (task) => task.status === 'in-progress' && task.items.some((i) => i.id === item.id)
       );
@@ -76,7 +76,7 @@ export function SloManagementTable() {
     onSelectionChange,
   };
 
-  const actions: Array<DefaultItemAction<SLODefinitionResponse>> = [
+  const actions: Array<DefaultItemAction<SLODefinitionWithHealthResponse>> = [
     {
       type: 'icon',
       icon: 'pencil',
@@ -88,7 +88,7 @@ export function SloManagementTable() {
       }),
       'data-test-subj': 'sloActionsEdit',
       enabled: () => !!permissions?.hasAllWriteRequested,
-      onClick: (slo: SLODefinitionResponse) => {
+      onClick: (slo: SLODefinitionWithHealthResponse) => {
         navigateToUrl(http.basePath.prepend(paths.sloEdit(slo.id)));
       },
     },
@@ -103,12 +103,13 @@ export function SloManagementTable() {
       }),
       enabled: () => !!permissions?.hasAllWriteRequested,
       'data-test-subj': 'sloActionsClone',
-      onClick: (slo: SLODefinitionResponse) => triggerAction({ item: slo, type: 'clone' }),
+      onClick: (slo: SLODefinitionWithHealthResponse) =>
+        triggerAction({ item: slo, type: 'clone' }),
     },
     {
       type: 'icon',
-      icon: (slo: SLODefinitionResponse) => (slo.enabled ? 'stop' : 'play'),
-      name: (slo: SLODefinitionResponse) =>
+      icon: (slo: SLODefinitionWithHealthResponse) => (slo.enabled ? 'stop' : 'play'),
+      name: (slo: SLODefinitionWithHealthResponse) =>
         slo.enabled
           ? i18n.translate('xpack.slo.item.actions.disable', {
               defaultMessage: 'Disable',
@@ -116,7 +117,7 @@ export function SloManagementTable() {
           : i18n.translate('xpack.slo.item.actions.enable', {
               defaultMessage: 'Enable',
             }),
-      description: (slo: SLODefinitionResponse) =>
+      description: (slo: SLODefinitionWithHealthResponse) =>
         slo.enabled
           ? i18n.translate('xpack.slo.item.actions.disable', {
               defaultMessage: 'Disable',
@@ -126,7 +127,7 @@ export function SloManagementTable() {
             }),
       'data-test-subj': 'sloActionsManage',
       enabled: () => !!permissions?.hasAllWriteRequested,
-      onClick: (slo: SLODefinitionResponse) => {
+      onClick: (slo: SLODefinitionWithHealthResponse) => {
         const isEnabled = slo.enabled;
         triggerAction({ item: slo, type: isEnabled ? 'disable' : 'enable' });
       },
@@ -142,7 +143,8 @@ export function SloManagementTable() {
       }),
       'data-test-subj': 'sloActionsDelete',
       enabled: () => !!permissions?.hasAllWriteRequested,
-      onClick: (slo: SLODefinitionResponse) => triggerAction({ item: slo, type: 'delete' }),
+      onClick: (slo: SLODefinitionWithHealthResponse) =>
+        triggerAction({ item: slo, type: 'delete' }),
     },
     {
       type: 'icon',
@@ -155,7 +157,8 @@ export function SloManagementTable() {
       }),
       'data-test-subj': 'sloActionsPurge',
       enabled: () => !!permissions?.hasAllWriteRequested,
-      onClick: (slo: SLODefinitionResponse) => triggerAction({ item: slo, type: 'purge' }),
+      onClick: (slo: SLODefinitionWithHealthResponse) =>
+        triggerAction({ item: slo, type: 'purge' }),
     },
     {
       type: 'icon',
@@ -168,17 +171,18 @@ export function SloManagementTable() {
       }),
       'data-test-subj': 'sloActionsReset',
       enabled: () => !!permissions?.hasAllWriteRequested,
-      onClick: (slo: SLODefinitionResponse) => triggerAction({ item: slo, type: 'reset' }),
+      onClick: (slo: SLODefinitionWithHealthResponse) =>
+        triggerAction({ item: slo, type: 'reset' }),
     },
   ];
 
-  const columns: Array<EuiBasicTableColumn<SLODefinitionResponse>> = [
+  const columns: Array<EuiBasicTableColumn<SLODefinitionWithHealthResponse>> = [
     {
       field: 'name',
       name: i18n.translate('xpack.slo.sloManagementTable.columns.nameLabel', {
         defaultMessage: 'Name',
       }),
-      render: (_, slo: SLODefinitionResponse) => {
+      render: (_, slo: SLODefinitionWithHealthResponse) => {
         return (
           <EuiLink
             data-test-subj="sloDetailsLink"
@@ -196,7 +200,7 @@ export function SloManagementTable() {
       name: i18n.translate('xpack.slo.sloManagementTable.columns.versionLabel', {
         defaultMessage: 'Version',
       }),
-      render: (value: SLODefinitionResponse['version']) => {
+      render: (value: SLODefinitionWithHealthResponse['version']) => {
         return value < SLO_MODEL_VERSION ? (
           <EuiText size="s">
             {i18n.translate('xpack.slo.sloManagementTable.version.outdated', {
@@ -217,7 +221,7 @@ export function SloManagementTable() {
       name: i18n.translate('xpack.slo.sloManagementTable.columns.tagsLabel', {
         defaultMessage: 'Tags',
       }),
-      render: (value: SLODefinitionResponse['tags']) => {
+      render: (value: SLODefinitionWithHealthResponse['tags']) => {
         return (
           <EuiFlexGroup gutterSize="xs" wrap responsive>
             {value.map((tag) => (
@@ -230,13 +234,35 @@ export function SloManagementTable() {
       },
     },
     {
-      field: 'State',
+      field: 'Health',
       width: '20%',
+      name: i18n.translate('xpack.slo.sloManagementTable.columns.health', {
+        defaultMessage: 'Health',
+      }),
+      render: (
+        _: SLODefinitionWithHealthResponse['health'],
+        item: SLODefinitionWithHealthResponse
+      ) => {
+        const color = item.health?.overall === 'healthy' ? 'success' : 'danger';
+        const label = item.health?.overall === 'healthy' ? 'Healthy' : 'Unhealthy';
+        return (
+          <>
+            <EuiBadge color={color}>{label}</EuiBadge>
+          </>
+        );
+      },
+    },
+    {
+      field: 'State',
+      width: '5%',
       name: i18n.translate('xpack.slo.sloManagementTable.columns.state', {
         defaultMessage: 'State',
       }),
-      render: (_: SLODefinitionResponse['enabled'], item: SLODefinitionResponse) => {
-        const color = item.enabled ? 'success' : 'danger';
+      render: (
+        _: SLODefinitionWithHealthResponse['enabled'],
+        item: SLODefinitionWithHealthResponse
+      ) => {
+        const color = item.enabled ? 'success' : 'neutral';
         const label = item.enabled ? 'Running' : 'Paused';
         return <EuiHealth color={color}>{label}</EuiHealth>;
       },
@@ -248,7 +274,7 @@ export function SloManagementTable() {
     },
   ];
 
-  const onTableChange = ({ page: newPage }: Criteria<SLODefinitionResponse>) => {
+  const onTableChange = ({ page: newPage }: Criteria<SLODefinitionWithHealthResponse>) => {
     if (newPage) {
       const { index, size } = newPage;
       const newState = {
@@ -288,7 +314,7 @@ export function SloManagementTable() {
       )}
 
       <EuiSpacer size="s" />
-      <EuiBasicTable<SLODefinitionResponse>
+      <EuiBasicTable<SLODefinitionWithHealthResponse>
         tableCaption={TABLE_CAPTION}
         error={
           isError
