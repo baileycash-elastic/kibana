@@ -36,11 +36,11 @@ export class FindSLODefinitions {
 
     if (params.getHealth) {
       const getSloHealthData = new GetSLOHealth(this.scopedClusterClient);
-      const sloIds = result.results.map((slo) => ({
+      const slos = result.results.map((slo) => ({
         sloId: slo.id,
         sloInstanceId: '*',
       }));
-      const healthData = await getSloHealthData.execute({ list: sloIds });
+      const healthData = await getSloHealthData.execute({ list: slos });
       result.results = result.results.map((slo) => ({
         ...slo,
         health: healthData.data.find((health: { sloId: string }) => health.sloId === slo.id)
