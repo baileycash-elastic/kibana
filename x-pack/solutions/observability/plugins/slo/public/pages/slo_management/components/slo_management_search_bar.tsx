@@ -66,6 +66,7 @@ export function SloManagementSearchBar({ onRefresh }: Props) {
             }}
             isClearable={true}
             data-test-subj="filter-slos-by-tag"
+            compressed
           />
         </>
       )}

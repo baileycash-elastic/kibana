@@ -6,6 +6,9 @@
  */
 
 import { i18n } from '@kbn/i18n';
+import kbnRison from '@kbn/rison';
+import type { LocatorPublic } from '@kbn/share-plugin/common/url_service';
+import type { SerializableRecord } from '@kbn/utility-types';
 
 export const INVALID_EQUATION_REGEX = /[^A-Z|+|\-|\s|\d+|\.|\(|\)|\/|\*|>|<|=|\?|\:|&|\!|\|]+/g;
 
@@ -89,6 +92,22 @@ export const getSLOSummaryPipelineId = (sloId: string, sloRevision: number) =>
 
 export const getWildcardPipelineId = (sloId: string, sloRevision: number) =>
   `.slo-observability.*.pipeline-${sloId}-${sloRevision}`;
+
+export const getSLOTransformUrl = (
+  locator: LocatorPublic<SerializableRecord> | undefined,
+  transformId: string
+) => {
+  return (
+    locator?.getRedirectUrl({
+      sectionId: 'data',
+      appId: `transform?_a=${kbnRison.encode({
+        transform: {
+          queryText: transformId,
+        },
+      })}`,
+    }) || ''
+  );
+};
 
 export const SYNTHETICS_INDEX_PATTERN = 'synthetics-*';
 export const SYNTHETICS_DEFAULT_GROUPINGS = ['monitor.name', 'observer.geo.name', 'monitor.id'];

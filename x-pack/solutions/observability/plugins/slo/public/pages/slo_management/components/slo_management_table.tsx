@@ -5,6 +5,7 @@
  * 2.0.
  */
 
+import React, { useState } from 'react';
 import type {
   Criteria,
   DefaultItemAction,
@@ -25,9 +26,14 @@ import {
 import { i18n } from '@kbn/i18n';
 import type { SLODefinitionWithHealthResponse } from '@kbn/slo-schema';
 import { ALL_VALUE } from '@kbn/slo-schema';
-import React, { useState } from 'react';
+import { MANAGEMENT_APP_LOCATOR } from '@kbn/deeplinks-management/constants';
 import { sloPaths } from '../../../../common';
-import { SLO_MODEL_VERSION } from '../../../../common/constants';
+import {
+  getSLOSummaryTransformId,
+  getSLOTransformId,
+  getSLOTransformUrl,
+  SLO_MODEL_VERSION,
+} from '../../../../common/constants';
 import { paths } from '../../../../common/locators/paths';
 import { useFetchSloDefinitions } from '../../../hooks/use_fetch_slo_definitions';
 import { useKibana } from '../../../hooks/use_kibana';
@@ -40,6 +46,13 @@ import { SloManagementSearchBar } from './slo_management_search_bar';
 
 export function SloManagementTable() {
   const { state, onStateChange } = useUrlSearchState();
+  const {
+    share: {
+      url: { locators },
+    },
+  } = useKibana().services;
+
+  const managementLocator = locators.get(MANAGEMENT_APP_LOCATOR);
   const { search, page, perPage, tags, includeOutdatedOnly } = state;
   const {
     services: {
@@ -234,27 +247,71 @@ export function SloManagementTable() {
       },
     },
     {
-      field: 'Health',
+      field: 'health',
       width: '20%',
-      name: i18n.translate('xpack.slo.sloManagementTable.columns.health', {
-        defaultMessage: 'Health',
+      name: i18n.translate('xpack.slo.sloManagementTable.columns.transformHealth', {
+        defaultMessage: 'Transform Health',
       }),
       render: (
         _: SLODefinitionWithHealthResponse['health'],
         item: SLODefinitionWithHealthResponse
       ) => {
-        const color = item.health?.overall === 'healthy' ? 'success' : 'danger';
-        const label = item.health?.overall === 'healthy' ? 'Healthy' : 'Unhealthy';
+        const healthyText = {
+          healthy: {
+            color: 'success',
+            label: 'Healthy',
+          },
+          unhealthy: {
+            color: 'danger',
+            label: 'Unhealthy',
+          },
+        };
+
+        const rollupTransformId = getSLOTransformId(item.id, item.revision);
+
+        const summaryTransformId = getSLOSummaryTransformId(item.id, item.revision);
+
         return (
-          <>
-            <EuiBadge color={color}>{label}</EuiBadge>
-          </>
+          <EuiFlexGroup direction="column" gutterSize="xs">
+            <EuiFlexItem>
+              <EuiHealth color={healthyText[item.health?.overall ?? 'unhealthy'].color}>
+                <EuiLink
+                  href={getSLOTransformUrl(managementLocator, rollupTransformId)}
+                  target="_blank"
+                  data-test-subj="sloRollupTransformLink"
+                >
+                  {i18n.translate('xpack.slo.sloManagementTable.columns.health', {
+                    defaultMessage: 'Rollup: {rollupLabel}',
+                    values: {
+                      rollupLabel: healthyText[item.health?.rollup ?? 'unhealthy'].label,
+                    },
+                  })}
+                </EuiLink>
+              </EuiHealth>
+            </EuiFlexItem>
+            <EuiFlexItem>
+              <EuiHealth color={healthyText[item.health?.summary ?? 'unhealthy'].color}>
+                <EuiLink
+                  href={getSLOTransformUrl(managementLocator, summaryTransformId)}
+                  target="_blank"
+                  data-test-subj="sloSummaryTransformLink"
+                >
+                  {i18n.translate('xpack.slo.sloManagementTable.columns.health', {
+                    defaultMessage: 'Summary: {summaryLabel}',
+                    values: {
+                      summaryLabel: healthyText[item.health?.summary ?? 'unhealthy'].label,
+                    },
+                  })}
+                </EuiLink>
+              </EuiHealth>
+            </EuiFlexItem>
+          </EuiFlexGroup>
         );
       },
     },
     {
       field: 'State',
-      width: '5%',
+      width: '10%',
       name: i18n.translate('xpack.slo.sloManagementTable.columns.state', {
         defaultMessage: 'State',
       }),
@@ -262,9 +319,9 @@ export function SloManagementTable() {
         _: SLODefinitionWithHealthResponse['enabled'],
         item: SLODefinitionWithHealthResponse
       ) => {
-        const color = item.enabled ? 'success' : 'neutral';
+        const color = item.enabled ? 'success' : 'subdued';
         const label = item.enabled ? 'Running' : 'Paused';
-        return <EuiHealth color={color}>{label}</EuiHealth>;
+        return <EuiBadge color={color}>{label}</EuiBadge>;
       },
     },
     {
