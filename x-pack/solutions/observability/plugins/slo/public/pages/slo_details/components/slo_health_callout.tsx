@@ -10,17 +10,24 @@ import React, { useMemo } from 'react';
 import { i18n } from '@kbn/i18n';
 import { FormattedMessage } from '@kbn/i18n-react';
 import { MANAGEMENT_APP_LOCATOR } from '@kbn/deeplinks-management/constants';
-import kbnRison from '@kbn/rison';
 import type { SLOWithSummaryResponse } from '@kbn/slo-schema';
 import { useKibana } from '../../../hooks/use_kibana';
 import { useFetchSloHealth } from '../../../hooks/use_fetch_slo_health';
 import { useActionModal } from '../../../context/action_modal';
 import { getSloHealthStateText } from '../../../lib/slo_health_helpers';
-import { getSLOTransformId, getSLOSummaryTransformId } from '../../../../common/constants';
+import {
+  getSLOTransformId,
+  getSLOSummaryTransformId,
+  getSLOTransformUrl,
+} from '../../../../common/constants';
 import { ContentWithResetCta } from './health_callout/content_with_reset_cta';
 import { ContentWithInspectCta } from './health_callout/content_with_inspect_cta';
 
-export function SloHealthCallout({ slo }: { slo: SLOWithSummaryResponse }) {
+export function SloHealthCallout({
+  slo,
+}: {
+  slo: SLOWithSummaryResponse;
+}): React.ReactElement | null {
   const { isLoading, isError, data } = useFetchSloHealth({ list: [slo] });
 
   const {
@@ -39,19 +46,6 @@ export function SloHealthCallout({ slo }: { slo: SLOWithSummaryResponse }) {
 
   const managementLocator = locators.get(MANAGEMENT_APP_LOCATOR);
 
-  const getUrl = (transformId: string) => {
-    return (
-      managementLocator?.getRedirectUrl({
-        sectionId: 'data',
-        appId: `transform?_a=${kbnRison.encode({
-          transform: {
-            queryText: transformId,
-          },
-        })}`,
-      }) || ''
-    );
-  };
-
   const rollupTransformId = useMemo(
     () => getSLOTransformId(slo.id, slo.revision),
     [slo.id, slo.revision]
@@ -62,8 +56,8 @@ export function SloHealthCallout({ slo }: { slo: SLOWithSummaryResponse }) {
     [slo.id, slo.revision]
   );
 
-  const rollupUrl = getUrl(rollupTransformId);
-  const summaryUrl = getUrl(summaryTransformId);
+  const rollupUrl = getSLOTransformUrl(managementLocator, rollupTransformId);
+  const summaryUrl = getSLOTransformUrl(managementLocator, summaryTransformId);
 
   if (isLoading || isError || data === undefined || data?.length !== 1) {
     return null;

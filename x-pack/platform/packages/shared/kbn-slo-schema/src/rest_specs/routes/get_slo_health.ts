@@ -31,5 +31,5 @@ const fetchSLOHealthParamsSchema = t.type({
 type FetchSLOHealthResponse = t.OutputOf<typeof fetchSLOHealthResponseSchema>;
 type FetchSLOHealthParams = t.TypeOf<typeof fetchSLOHealthParamsSchema.props.body>;
 
-export { fetchSLOHealthParamsSchema, fetchSLOHealthResponseSchema, fetchSLOHealthDataSchema };
+export { fetchSLOHealthParamsSchema, fetchSLOHealthResponseSchema };
 export type { FetchSLOHealthResponse, FetchSLOHealthParams };
