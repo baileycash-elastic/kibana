@@ -28,7 +28,8 @@ export function SloHealthCallout({
 }: {
   slo: SLOWithSummaryResponse;
 }): React.ReactElement | null {
-  const { isLoading, isError, data } = useFetchSloHealth({ list: [slo] });
+  const { isLoading, isError, data: resultData } = useFetchSloHealth({ list: [slo] });
+  const { data } = resultData ?? {};
 
   const {
     share: {
