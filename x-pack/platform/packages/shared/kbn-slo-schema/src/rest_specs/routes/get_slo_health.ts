@@ -15,9 +15,12 @@ const fetchSLOHealthDataSchema = t.array(
     sloName: t.string,
     state: stateSchema,
     health: t.type({
-      overall: transformHealthSchema,
-      rollup: healthStatusSchema,
-      summary: healthStatusSchema,
+      slo: t.union([t.literal('healthy'), t.literal('unhealthy')]),
+      transform: t.type({
+        overall: transformHealthSchema,
+        rollup: healthStatusSchema,
+        summary: healthStatusSchema,
+      }),
     }),
   })
 );
@@ -37,7 +40,7 @@ const fetchSLOHealthParamsSchema = t.type({
     t.partial({
       page: t.number,
       perPage: t.number,
-      statusFilter: t.union([t.literal('healthy'), t.literal('unhealthy')]),
+      healthFilter: t.union([t.literal('healthy'), t.literal('unhealthy')]),
     }),
   ]),
 });

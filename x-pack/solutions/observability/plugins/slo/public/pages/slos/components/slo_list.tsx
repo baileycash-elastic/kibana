@@ -91,6 +91,8 @@ export function SloList() {
     },
   });
 
+  console.log(sloList);
+
   return (
     <EuiFlexGroup direction="column" gutterSize="m" data-test-subj="sloList">
       <EuiFlexItem grow={false}>

@@ -47,6 +47,7 @@ export class GetSLOHealth {
       sloInstanceId: string;
       sloRevision: number;
       sloName: string;
+      sloEnabled: boolean;
     }> = [];
 
     const page = typeof params.page === 'number' && params.page >= 0 ? params.page : 0;
@@ -77,6 +78,9 @@ export class GetSLOHealth {
                 {
                   sloName: { terms: { field: 'slo.name.keyword' } },
                 },
+                // {
+                //   sloEnabled: { terms: { field: 'slo.enabled' } },
+                // },
               ],
             },
           },
@@ -95,7 +99,13 @@ export class GetSLOHealth {
       const buckets = (
         sloIdCompositeQueryResponse.aggregations?.sloIds as {
           buckets?: Array<{
-            key: { sloId: string; sloInstanceId: string; sloRevision: number; sloName: string };
+            key: {
+              sloId: string;
+              sloInstanceId: string;
+              sloRevision: number;
+              sloName: string;
+              sloEnabled: boolean;
+            };
           }>;
         }
       )?.buckets;
@@ -108,6 +118,7 @@ export class GetSLOHealth {
               sloInstanceId: bucket.key.sloInstanceId,
               sloRevision: bucket.key.sloRevision,
               sloName: bucket.key.sloName,
+              sloEnabled: bucket.key.sloEnabled,
             };
           }),
         ]);
@@ -119,6 +130,7 @@ export class GetSLOHealth {
       sloInstanceId: item.sloInstanceId,
       sloRevision: item.sloRevision,
       sloName: item.sloName,
+      sloEnabled: item.sloEnabled,
     }));
 
     const summaryDocsById = await this.getSummaryDocsById(filteredList);
@@ -134,6 +146,7 @@ export class GetSLOHealth {
           sloName: item.sloName,
           sloInstanceId: item.sloInstanceId,
           sloRevision: item.sloRevision,
+          sloEnabled: item.sloEnabled,
           state,
           health,
         };
@@ -144,8 +157,8 @@ export class GetSLOHealth {
       new Map(results.map((item) => [`${item.sloId}-${item.sloRevision}`, item])).values()
     );
 
-    const uniqueResults = params.statusFilter
-      ? mappedResults.filter((item) => item.health.overall === params.statusFilter)
+    const uniqueResults = params.healthFilter
+      ? mappedResults.filter((item) => item.health.slo === params.healthFilter)
       : mappedResults;
 
     return fetchSLOHealthResponseSchema.encode({
@@ -275,8 +288,15 @@ function getTransformHealth(
 
 function computeHealth(
   transformStatsById: Dictionary<TransformGetTransformStatsTransformStats>,
-  item: { sloId: string; sloInstanceId: string; sloRevision: number }
-): { overall: 'healthy' | 'unhealthy'; rollup: HealthStatus; summary: HealthStatus } {
+  item: { sloId: string; sloInstanceId: string; sloRevision: number; sloEnabled: boolean }
+): {
+  slo: 'healthy' | 'unhealthy';
+  transform: {
+    overall: 'healthy' | 'unhealthy';
+    rollup: HealthStatus;
+    summary: HealthStatus;
+  };
+} {
   const rollup = getTransformHealth(
     transformStatsById[getSLOTransformId(item.sloId, item.sloRevision)]
   );
@@ -287,5 +307,20 @@ function computeHealth(
   const overall: 'healthy' | 'unhealthy' =
     rollup.status === 'healthy' && summary.status === 'healthy' ? 'healthy' : 'unhealthy';
 
-  return { overall, rollup, summary };
+  const isFullyStarted =
+    rollup.transformState === 'started' &&
+    summary.transformState === 'started' &&
+    overall === 'healthy' &&
+    item.sloEnabled;
+
+  const isFullyStopped =
+    rollup.transformState === 'stopped' &&
+    summary.transformState === 'stopped' &&
+    overall === 'healthy' &&
+    !item.sloEnabled;
+
+  return {
+    slo: isFullyStarted || isFullyStopped ? 'healthy' : 'unhealthy',
+    transform: { overall, rollup, summary },
+  };
 }

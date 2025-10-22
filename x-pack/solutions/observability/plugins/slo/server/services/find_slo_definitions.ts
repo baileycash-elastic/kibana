@@ -42,6 +42,7 @@ export class FindSLODefinitions {
         sloInstanceId: '*',
         sloRevision: item.revision,
         sloName: item.name,
+        sloEnabled: item.enabled,
       })),
     });
 

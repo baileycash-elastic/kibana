@@ -117,9 +117,12 @@ const sloDefinitionAndHealthSchema = t.intersection([
   t.partial({
     state: stateSchema,
     health: t.type({
-      overall: transformHealthSchema,
-      rollup: healthStatusSchema,
-      summary: healthStatusSchema,
+      slo: t.union([t.literal('healthy'), t.literal('unhealthy')]),
+      transform: t.type({
+        overall: transformHealthSchema,
+        rollup: healthStatusSchema,
+        summary: healthStatusSchema,
+      }),
     }),
   }),
 ]);

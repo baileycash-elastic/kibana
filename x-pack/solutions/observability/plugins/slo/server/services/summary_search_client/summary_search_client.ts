@@ -123,6 +123,7 @@ export class DefaultSummarySearchClient implements SummarySearchClient {
         ...paginationResults,
         total: finalTotal,
         results: finalResults.map((doc) => {
+          console.log(doc._source);
           const summaryDoc = doc._source;
           const remoteName = getRemoteClusterName(doc._index);
           const isRemote = !!remoteName;

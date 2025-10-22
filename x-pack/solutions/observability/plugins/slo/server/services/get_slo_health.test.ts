@@ -21,7 +21,9 @@ describe('GetSLOHealth', () => {
   let mockScopedClusterClient: ScopedClusterClientMock;
   let getSLOHealth: GetSLOHealth;
 
-  function mockSLOCompositeAggResponse(slos: { id: any; revision: any; name: any }[]) {
+  function mockSLOCompositeAggResponse(
+    slos: { id: string; revision: number; name: string; enabled: boolean }[]
+  ) {
     return mockScopedClusterClient.asCurrentUser.search.mockResolvedValueOnce({
       took: 1,
       timed_out: false,
@@ -47,6 +49,7 @@ describe('GetSLOHealth', () => {
               sloInstanceId: '*',
               sloRevision: slo.revision,
               sloName: slo.name,
+              sloEnabled: slo.enabled,
             },
             doc_count: 1,
           })),
@@ -98,12 +101,15 @@ describe('GetSLOHealth', () => {
         "data": Array [
           Object {
             "health": Object {
-              "overall": "unhealthy",
-              "rollup": Object {
-                "status": "missing",
-              },
-              "summary": Object {
-                "status": "missing",
+              "slo": "unhealthy",
+              "transform": Object {
+                "overall": "unhealthy",
+                "rollup": Object {
+                  "status": "missing",
+                },
+                "summary": Object {
+                  "status": "missing",
+                },
               },
             },
             "sloId": "95ffb9af-1384-4d24-8e3f-345a03d7a439",
@@ -200,14 +206,17 @@ describe('GetSLOHealth', () => {
           "data": Array [
             Object {
               "health": Object {
-                "overall": "healthy",
-                "rollup": Object {
-                  "status": "healthy",
-                  "transformState": "started",
-                },
-                "summary": Object {
-                  "status": "healthy",
-                  "transformState": "started",
+                "slo": "healthy",
+                "transform": Object {
+                  "overall": "healthy",
+                  "rollup": Object {
+                    "status": "healthy",
+                    "transformState": "started",
+                  },
+                  "summary": Object {
+                    "status": "healthy",
+                    "transformState": "started",
+                  },
                 },
               },
               "sloId": "95ffb9af-1384-4d24-8e3f-345a03d7a439",
@@ -272,14 +281,17 @@ describe('GetSLOHealth', () => {
           "data": Array [
             Object {
               "health": Object {
-                "overall": "unhealthy",
-                "rollup": Object {
-                  "status": "unhealthy",
-                  "transformState": "started",
-                },
-                "summary": Object {
-                  "status": "healthy",
-                  "transformState": "started",
+                "slo": "unhealthy",
+                "transform": Object {
+                  "overall": "unhealthy",
+                  "rollup": Object {
+                    "status": "unhealthy",
+                    "transformState": "started",
+                  },
+                  "summary": Object {
+                    "status": "healthy",
+                    "transformState": "started",
+                  },
                 },
               },
               "sloId": "95ffb9af-1384-4d24-8e3f-345a03d7a439",
@@ -353,9 +365,11 @@ describe('GetSLOHealth', () => {
       });
 
       expect(result.data).toHaveLength(2);
-      expect(result.data[0].health.summary.status).toBe('missing');
-      expect(result.data[1].health.summary.status).toBe('healthy');
-      expect(result.data[1].health.summary.transformState).toBe('started');
+      expect(result.data[0].health.transform.summary.status).toBe('missing');
+      expect(result.data[0].health.slo).toBe('unhealthy');
+      expect(result.data[1].health.transform.summary.status).toBe('healthy');
+      expect(result.data[1].health.transform.summary.transformState).toBe('started');
+      expect(result.data[1].health.slo).toBe('healthy');
     });
 
     it('shows only 1 missing summary transform', async () => {
@@ -415,12 +429,14 @@ describe('GetSLOHealth', () => {
       });
 
       const missingSummaryTotal = result.data.filter(
-        (res) => res.health.summary.status === 'missing'
+        (res) => res.health.transform.summary.status === 'missing'
       ).length;
       expect(missingSummaryTotal).toBe(1);
       expect(result.data).toHaveLength(2);
-      expect(result.data[0].health.summary.status).toBe('missing');
-      expect(result.data[1].health.summary.status).toBe('healthy');
+      expect(result.data[0].health.transform.summary.status).toBe('missing');
+      expect(result.data[0].health.slo).toBe('unhealthy');
+      expect(result.data[1].health.transform.summary.status).toBe('healthy');
+      expect(result.data[1].health.slo).toBe('healthy');
     });
   });
 
@@ -702,7 +718,7 @@ describe('GetSLOHealth', () => {
     });
   });
 
-  describe('statusFilter', () => {
+  describe('healthFilter', () => {
     const slo1 = createSLO({ id: 'healthy-slo', name: 'healthy-slo' });
     const slo2 = createSLO({ id: 'unhealthy-slo', name: 'unhealthy-slo' });
     const slos = [slo1, slo2];
@@ -755,31 +771,31 @@ describe('GetSLOHealth', () => {
       } as any);
     });
 
-    it("returns only healthy SLOs when statusFilter is 'healthy'", async () => {
+    it("returns only healthy SLOs when healthFilter is 'healthy'", async () => {
       const result = await getSLOHealth.execute({
         list: slos.map((slo) => ({ sloId: slo.id, sloInstanceId: ALL_VALUE })),
-        statusFilter: 'healthy',
+        healthFilter: 'healthy',
       });
 
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(result.data[0].sloId).toBe('healthy-slo');
-      expect(result.data[0].health.overall).toBe('healthy');
+      expect(result.data[0].health.transform.overall).toBe('healthy');
     });
 
-    it("returns only unhealthy SLOs when statusFilter is 'unhealthy'", async () => {
+    it("returns only unhealthy SLOs when healthFilter is 'unhealthy'", async () => {
       const result = await getSLOHealth.execute({
         list: slos.map((slo) => ({ sloId: slo.id, sloInstanceId: ALL_VALUE })),
-        statusFilter: 'unhealthy',
+        healthFilter: 'unhealthy',
       });
 
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(result.data[0].sloId).toBe('unhealthy-slo');
-      expect(result.data[0].health.overall).toBe('unhealthy');
+      expect(result.data[0].health.transform.overall).toBe('unhealthy');
     });
 
-    it('returns all SLOs when statusFilter is not provided', async () => {
+    it('returns all SLOs when healthFilter is not provided', async () => {
       const result = await getSLOHealth.execute({
         list: slos.map((slo) => ({ sloId: slo.id, sloInstanceId: ALL_VALUE })),
       });

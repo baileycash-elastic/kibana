@@ -77,38 +77,6 @@ export function SloManagementTable() {
     onSelectionChange,
   };
 
-  const getSLOState = (slo: SLODefinitionWithHealthResponse) => {
-    const stoppedSLO =
-      !slo.enabled &&
-      slo.health?.rollup.transformState === 'stopped' &&
-      slo.health?.summary.transformState === 'stopped';
-
-    const healthyByOperation =
-      slo.health?.rollup.status === 'healthy' && slo.health?.summary.status === 'healthy';
-
-    const healthyByStatus =
-      slo.enabled &&
-      slo.health?.rollup.transformState === 'started' &&
-      slo.health?.summary.transformState === 'started';
-
-    if (stoppedSLO) {
-      return {
-        label: 'Disabled',
-        color: 'subdued',
-      };
-    } else if (healthyByOperation && healthyByStatus) {
-      return {
-        label: 'Enabled',
-        color: 'success',
-      };
-    } else {
-      return {
-        label: 'Needs attention',
-        color: 'danger',
-      };
-    }
-  };
-
   const actions: Array<DefaultItemAction<SLODefinitionWithHealthResponse>> = [
     {
       type: 'icon',
@@ -267,13 +235,28 @@ export function SloManagementTable() {
       },
     },
     {
-      field: 'state',
-      width: '20%',
+      field: 'State',
+      width: '15%',
+      name: i18n.translate('xpack.slo.sloManagementTable.columns.state', {
+        defaultMessage: 'State',
+      }),
+      render: (
+        _: SLODefinitionWithHealthResponse['enabled'],
+        item: SLODefinitionWithHealthResponse
+      ) => {
+        const color = item.enabled ? 'success' : 'subdued';
+        const label = item.enabled ? 'Enabled' : 'Disabled';
+        return <EuiHealth color={color}>{label}</EuiHealth>;
+      },
+    },
+    {
+      field: 'health',
+      width: '15%',
       name: (
         <EuiFlexGroup alignItems="center" gutterSize="xs" responsive={false}>
           <EuiFlexItem grow={false}>
-            {i18n.translate('xpack.slo.sloManagementTable.columns.state', {
-              defaultMessage: 'State',
+            {i18n.translate('xpack.slo.sloManagementTable.columns.health', {
+              defaultMessage: 'Operational Health',
             })}
           </EuiFlexItem>
           <EuiFlexItem>
@@ -283,7 +266,7 @@ export function SloManagementTable() {
                 <>
                   {i18n.translate('xpack.slo.sloManagementTable.columns.stateTooltipEnabled', {
                     defaultMessage:
-                      "An SLO needs attention when its transforms are not operating as expected. Click on the SLO's name to view the problem in greater detail.",
+                      'An SLO needs attention when its transforms are not operating as expected.',
                   })}
                 </>
               }
@@ -292,11 +275,32 @@ export function SloManagementTable() {
         </EuiFlexGroup>
       ),
       render: (_, item: SLODefinitionWithHealthResponse) => {
-        /*
-        SLO state is considered healthy only if both rollup and summary transforms are healthy, and the SLO is enabled.
-        */
-        const { color, label } = getSLOState(item);
-        return <EuiHealth color={color}>{label}</EuiHealth>;
+        console.log(item.health);
+        const sloHealth =
+          item.health?.slo === 'healthy'
+            ? {
+                label: 'Healthy',
+                color: 'success',
+                healthy: true,
+              }
+            : {
+                label: 'Needs attention',
+                color: 'danger',
+                healthy: false,
+              };
+
+        return sloHealth.healthy ? (
+          <>{sloHealth.label}</>
+        ) : (
+          <EuiLink
+            data-test-subj="sloDetailsLink"
+            href={http.basePath.prepend(sloPaths.sloDetails(item.id, ALL_VALUE))}
+            target="_blank"
+            color="danger"
+          >
+            {sloHealth.label}
+          </EuiLink>
+        );
       },
     },
     {
