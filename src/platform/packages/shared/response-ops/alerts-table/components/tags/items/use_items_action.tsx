@@ -10,6 +10,8 @@
 import { useCallback, useState } from 'react';
 import { difference, isEqual } from 'lodash';
 import type { Alert } from '@kbn/alerting-types';
+import type { HttpStart } from '@kbn/core-http-browser';
+import type { NotificationsStart } from '@kbn/core-notifications-browser';
 import type { UseActionProps, ItemsSelectionState } from './types';
 
 type AlertsUpdateRequest = Record<string, unknown>;
@@ -19,6 +21,8 @@ type UseItemsActionProps<T> = UseActionProps & {
   successToasterTitle: (totalAlerts: number) => string;
   fieldSelector: (alert: Alert) => string[];
   itemsTransformer: (items: string[]) => T;
+  http: HttpStart;
+  notifications: NotificationsStart;
 };
 
 export const useItemsAction = <T,>({
@@ -29,6 +33,8 @@ export const useItemsAction = <T,>({
   successToasterTitle,
   fieldSelector,
   itemsTransformer,
+  http,
+  notifications,
 }: UseItemsActionProps<T>) => {
   const [isFlyoutOpen, setIsFlyoutOpen] = useState<boolean>(false);
   const [selectedAlertsToEdit, setSelectedAlertsToEdit] = useState<Alert[]>([]);
@@ -49,11 +55,70 @@ export const useItemsAction = <T,>({
   };
 
   const updateAlerts = useCallback(
-    (payload: AlertsUpdateRequest, options: { onSuccess: () => void }) => {
-      // TODO: Implement logic to update alerts
-      options.onSuccess();
+    async (
+      payload: {
+        alertsToUpdate: AlertsUpdateRequest[];
+        selectedItems: string[];
+        unSelectedItems: string[];
+      },
+      options: { onSuccess: () => void }
+    ) => {
+      if (payload.alertsToUpdate.length === 0) {
+        options.onSuccess();
+        return;
+      }
+
+      // Only tags field is supported for bulk updates via the RAC alerts API
+      if (fieldKey !== 'tags') {
+        notifications.toasts.addWarning({
+          title: `Bulk update for ${fieldKey} is not yet supported`,
+        });
+        options.onSuccess();
+        return;
+      }
+
+      try {
+        // Group alerts by index since the API requires a single index per request
+        const alertsByIndex = payload.alertsToUpdate.reduce(
+          (acc, alert) => {
+            const index = (alert as unknown as Alert)._index;
+            if (!acc[index]) {
+              acc[index] = [];
+            }
+            acc[index].push((alert as unknown as Alert)._id);
+            return acc;
+          },
+          {} as Record<string, string[]>
+        );
+
+        // Make API calls for each index
+        await Promise.all(
+          Object.entries(alertsByIndex).map(([index, alertIds]) =>
+            http.post('/internal/rac/alerts/tags', {
+              body: JSON.stringify({
+                index,
+                alertIds,
+                add: payload.selectedItems.length > 0 ? payload.selectedItems : undefined,
+                remove: payload.unSelectedItems.length > 0 ? payload.unSelectedItems : undefined,
+              }),
+            })
+          )
+        );
+
+        notifications.toasts.addSuccess({
+          title: `Successfully updated ${payload.alertsToUpdate.length} alert${
+            payload.alertsToUpdate.length !== 1 ? 's' : ''
+          }`,
+        });
+
+        options.onSuccess();
+      } catch (error) {
+        notifications.toasts.addError(error as Error, {
+          title: `Failed to update alerts`,
+        });
+      }
     },
-    []
+    [fieldKey, http, notifications]
   );
 
   const onSaveItems = useCallback(
@@ -86,13 +151,15 @@ export const useItemsAction = <T,>({
             [fieldKey]: itemsTransformer(Array.from(uniqueItems.values())),
             id: alert.id,
             version: alert.version,
+            ...alert, // Include the full alert object to access _id and _index
           },
         ];
       }, [] as AlertsUpdateRequest[]);
 
       const payload = {
-        Alerts: alertsToUpdate,
-        successToasterTitle: successToasterTitle(selectedAlertsToEdit.length),
+        alertsToUpdate,
+        selectedItems: itemsSelection.selectedItems,
+        unSelectedItems: itemsSelection.unSelectedItems,
       };
 
       updateAlerts(payload, { onSuccess: onActionSuccess });

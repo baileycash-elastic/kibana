@@ -25,6 +25,20 @@ describe('useItemsAction', () => {
   const fieldSelector = jest.fn().mockImplementation((item) => item[ALERT_WORKFLOW_TAGS]);
   const itemsTransformer = jest.fn().mockImplementation((items) => items);
 
+  const mockHttp = {
+    post: jest.fn().mockResolvedValue({}),
+  };
+
+  const mockToasts = {
+    addSuccess: jest.fn(),
+    addError: jest.fn(),
+    addWarning: jest.fn(),
+  };
+
+  const mockNotifications = {
+    toasts: mockToasts,
+  };
+
   const props = {
     isDisabled: false,
     fieldKey: 'tags' as const,
@@ -33,6 +47,8 @@ describe('useItemsAction', () => {
     successToasterTitle,
     fieldSelector,
     itemsTransformer,
+    http: mockHttp as any,
+    notifications: mockNotifications as any,
   };
 
   beforeEach(() => {

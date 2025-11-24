@@ -300,7 +300,12 @@ export const useBulkUntrackActions = ({
   ]);
 };
 
-export const useBulkTagsActions = ({ refresh, clearSelection }: UseBulkTagsActionsProps) => {
+export const useBulkTagsActions = ({
+  refresh,
+  clearSelection,
+  http,
+  notifications,
+}: UseBulkTagsActionsProps) => {
   const onActionSuccess = useCallback(() => {
     refresh();
     clearSelection();
@@ -312,6 +317,8 @@ export const useBulkTagsActions = ({ refresh, clearSelection }: UseBulkTagsActio
     onAction,
     onActionSuccess,
     isDisabled: false,
+    http,
+    notifications,
   });
 
   return { tagsAction };

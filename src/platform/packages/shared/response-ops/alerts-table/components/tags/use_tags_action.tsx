@@ -11,11 +11,24 @@ import { EuiIcon } from '@elastic/eui';
 import React from 'react';
 import type { Alert } from '@kbn/alerting-types';
 import { ALERT_WORKFLOW_TAGS } from '@kbn/rule-data-utils';
+import type { HttpStart } from '@kbn/core-http-browser';
+import type { NotificationsStart } from '@kbn/core-notifications-browser';
 import type { UseActionProps } from './items/types';
 import { useItemsAction } from './items/use_items_action';
 import * as i18n from './translations';
 
-export const useTagsAction = ({ onAction, onActionSuccess, isDisabled }: UseActionProps) => {
+export interface UseTagsActionProps extends UseActionProps {
+  http: HttpStart;
+  notifications: NotificationsStart;
+}
+
+export const useTagsAction = ({
+  onAction,
+  onActionSuccess,
+  isDisabled,
+  http,
+  notifications,
+}: UseTagsActionProps) => {
   const { isFlyoutOpen, onFlyoutClosed, onSaveItems, openFlyout, isActionDisabled } =
     useItemsAction<Alert['tags']>({
       fieldKey: 'tags',
@@ -25,6 +38,8 @@ export const useTagsAction = ({ onAction, onActionSuccess, isDisabled }: UseActi
       successToasterTitle: i18n.EDITED_ALERTS,
       fieldSelector: (alert) => alert[ALERT_WORKFLOW_TAGS] as string[],
       itemsTransformer: (items) => items,
+      http,
+      notifications,
     });
 
   const getAction = (selectedAlerts: Alert[]) => {
