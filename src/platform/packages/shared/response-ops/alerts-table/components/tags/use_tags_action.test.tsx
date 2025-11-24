@@ -21,6 +21,20 @@ describe('useTagsAction', () => {
   const onAction = jest.fn();
   const onActionSuccess = jest.fn();
 
+  const mockHttp = {
+    post: jest.fn().mockResolvedValue({}),
+  };
+
+  const mockToasts = {
+    addSuccess: jest.fn(),
+    addError: jest.fn(),
+    addWarning: jest.fn(),
+  };
+
+  const mockNotifications = {
+    toasts: mockToasts,
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -31,6 +45,8 @@ describe('useTagsAction', () => {
         onAction,
         onActionSuccess,
         isDisabled: false,
+        http: mockHttp as any,
+        notifications: mockNotifications as any,
       })
     );
 
@@ -51,7 +67,13 @@ describe('useTagsAction', () => {
 
   it('processes the tags correctly', async () => {
     const { result } = renderHook(() =>
-      useTagsAction({ onAction, onActionSuccess, isDisabled: false })
+      useTagsAction({
+        onAction,
+        onActionSuccess,
+        isDisabled: false,
+        http: mockHttp as any,
+        notifications: mockNotifications as any,
+      })
     );
 
     const action = result.current.getAction([mockAlert]);
@@ -74,7 +96,13 @@ describe('useTagsAction', () => {
 
   it('opens and closes the flyout correctly', async () => {
     const { result } = renderHook(() =>
-      useTagsAction({ onAction, onActionSuccess, isDisabled: false })
+      useTagsAction({
+        onAction,
+        onActionSuccess,
+        isDisabled: false,
+        http: mockHttp as any,
+        notifications: mockNotifications as any,
+      })
     );
 
     const action = result.current.getAction([mockAlert]);
@@ -101,7 +129,13 @@ describe('useTagsAction', () => {
 
   it('handles multiple alerts', async () => {
     const { result } = renderHook(() =>
-      useTagsAction({ onAction, onActionSuccess, isDisabled: false })
+      useTagsAction({
+        onAction,
+        onActionSuccess,
+        isDisabled: false,
+        http: mockHttp as any,
+        notifications: mockNotifications as any,
+      })
     );
 
     const mockAlert2 = {

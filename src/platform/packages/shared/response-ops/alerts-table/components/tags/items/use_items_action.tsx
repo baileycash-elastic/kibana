@@ -79,17 +79,13 @@ export const useItemsAction = <T,>({
 
       try {
         // Group alerts by index since the API requires a single index per request
-        const alertsByIndex = payload.alertsToUpdate.reduce(
-          (acc, alert) => {
-            const index = (alert as unknown as Alert)._index;
-            if (!acc[index]) {
-              acc[index] = [];
-            }
-            acc[index].push((alert as unknown as Alert)._id);
-            return acc;
-          },
-          {} as Record<string, string[]>
-        );
+        const alertsByIndex = payload.alertsToUpdate.reduce((acc, alert) => {
+          const index = (alert as unknown as Alert)._index;
+          const alertId = (alert as unknown as Alert)._id;
+          const existing = acc[index] as string[] | undefined;
+          acc[index] = existing ? [...existing, alertId] : [alertId];
+          return acc;
+        }, {} as Record<string, string[]>);
 
         // Make API calls for each index
         await Promise.all(
@@ -172,7 +168,6 @@ export const useItemsAction = <T,>({
       onActionSuccess,
       onFlyoutClosed,
       selectedAlertsToEdit,
-      successToasterTitle,
       updateAlerts,
     ]
   );
