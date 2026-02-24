@@ -33,6 +33,7 @@ import {
   rulesLastRunOutcomeTranslationMapping,
   rulesStatusesTranslationsMapping,
 } from '../../rules_list/translations';
+import { RuleAlertActionsCell } from './rule_alert_actions_cell';
 
 const RuleEventLogList = lazy(() => import('./rule_event_log_list'));
 const RuleDefinition = lazy(() => import('./rule_definition'));
@@ -118,6 +119,7 @@ export function RuleComponent({
           query={{ bool: { filter: { term: { [ALERT_RULE_UUID]: rule.id } } } }}
           showAlertStatusWithFlapping
           columns={alertsTableColumns}
+          renderActionsCell={RuleAlertActionsCell}
           actionsColumnWidth={120}
           lastReloadRequestTime={lastReloadRequestTime}
           services={{
