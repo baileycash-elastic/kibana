@@ -12,6 +12,16 @@ export type {
   ObservabilitySharedPluginStart,
   ProfilingLocators,
 } from './plugin';
+export type {
+  ObservabilityRuleTypeFormatter,
+  ObservabilityFormatterRegistry,
+  AlertFormatterLookup,
+  AsDuration,
+  AsPercent,
+} from './rules/observability_rule_type_registry';
+export { createObservabilityFormatterRegistry } from './rules/observability_rule_type_registry';
+export { parseAlert as parseObservabilityAlert } from './rules/parse_alert';
+export type { TopAlert } from './typings/alerts';
 export const plugin = () => {
   return new ObservabilitySharedPlugin();
 };

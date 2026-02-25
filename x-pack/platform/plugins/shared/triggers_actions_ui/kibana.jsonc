@@ -28,7 +28,8 @@
       "embeddable",
       "fieldsMetadata",
       "uiActions",
-      "contentManagement"
+      "contentManagement",
+      "observabilityShared"
     ],
     "optionalPlugins": ["cloud", "features", "home", "spaces", "serverless", "share"],
     "requiredBundles": ["alerting", "esUiShared", "kibanaReact", "kibanaUtils", "actions"],

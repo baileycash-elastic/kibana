@@ -14,6 +14,11 @@ import type {
 } from '@kbn/share-plugin/public';
 import type { SpacesPluginStart } from '@kbn/spaces-plugin/public';
 import { BehaviorSubject } from 'rxjs';
+import {
+  createObservabilityFormatterRegistry,
+  type ObservabilityFormatterRegistry,
+} from './rules/observability_rule_type_registry';
+import { parseAlert } from './rules/parse_alert';
 import { createLazyObservabilityPageTemplate } from './components/page_template';
 import { createNavigationRegistry } from './components/page_template/helpers/navigation_registry';
 import { registerProfilingComponent } from './components/profiling/helpers/component_registry';
@@ -83,9 +88,11 @@ interface ObservabilitySharedLocators {
 export class ObservabilitySharedPlugin implements Plugin {
   private readonly navigationRegistry = createNavigationRegistry();
   private isSidebarEnabled$: BehaviorSubject<boolean>;
+  private observabilityFormatterRegistry: ObservabilityFormatterRegistry;
 
   constructor() {
     this.isSidebarEnabled$ = new BehaviorSubject<boolean>(true);
+    this.observabilityFormatterRegistry = createObservabilityFormatterRegistry();
   }
 
   public setup(coreSetup: CoreSetup, pluginsSetup: ObservabilitySharedSetup) {
@@ -95,12 +102,15 @@ export class ObservabilitySharedPlugin implements Plugin {
         .subscribe((style) => this.isSidebarEnabled$.next(style === 'classic'));
     });
 
+    this.observabilityFormatterRegistry = createObservabilityFormatterRegistry();
+
     return {
       registerProfilingComponent,
       locators: this.createLocators(pluginsSetup.share.url),
       navigation: {
         registerSections: this.navigationRegistry.registerSections,
       },
+      observabilityRuleTypeRegistry: this.observabilityFormatterRegistry,
     };
   }
 
@@ -123,6 +133,8 @@ export class ObservabilitySharedPlugin implements Plugin {
         registerSections: this.navigationRegistry.registerSections,
       },
       updateGlobalNavigation,
+      observabilityRuleTypeRegistry: this.observabilityFormatterRegistry,
+      parseObservabilityAlert: parseAlert(this.observabilityFormatterRegistry),
     };
   }
 

@@ -12,11 +12,12 @@ import {
   EuiPopover,
   EuiToolTip,
 } from '@elastic/eui';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { i18n } from '@kbn/i18n';
 import { DefaultAlertActions } from '@kbn/response-ops-alerts-table/components/default_alert_actions';
 import type { GetAlertsTableProp } from '@kbn/response-ops-alerts-table/types';
 import { STACK_MANAGEMENT_RULE_PAGE_URL_PREFIX } from '@kbn/response-ops-alerts-table/constants';
+import { useKibana } from '../../../../common/lib/kibana';
 
 const VIEW_DETAILS = i18n.translate(
   'xpack.triggersActionsUI.ruleDetails.alertsTable.viewDetailsLabel',
@@ -38,8 +39,22 @@ const MORE_ACTIONS = i18n.translate(
  * Contains three buttons: expand row, view in app, and a kebab menu with common actions.
  */
 export const RuleAlertActionsCell: GetAlertsTableProp<'renderActionsCell'> = (props) => {
-  const { rowIndex } = props;
+  const { rowIndex, alert } = props;
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  const {
+    services: {
+      parseObservabilityAlert,
+      http: { basePath },
+    },
+  } = useKibana();
+
+  const viewInAppUrl = useMemo(() => {
+    if (!parseObservabilityAlert) return undefined;
+    const parsed = parseObservabilityAlert(alert as Record<string, unknown>);
+    if (!parsed.link) return undefined;
+    return parsed.hasBasePath ? parsed.link : basePath.prepend(parsed.link);
+  }, [parseObservabilityAlert, alert, basePath]);
 
   const closeActionsPopover = useCallback(() => {
     setIsPopoverOpen(false);
@@ -70,7 +85,6 @@ export const RuleAlertActionsCell: GetAlertsTableProp<'renderActionsCell'> = (pr
 
   return (
     <>
-      {/* TODO: implement view in app */}
       <EuiFlexItem>
         <EuiToolTip content={VIEW_IN_APP} disableScreenReaderOutput>
           <EuiButtonIcon
@@ -79,7 +93,8 @@ export const RuleAlertActionsCell: GetAlertsTableProp<'renderActionsCell'> = (pr
             color="text"
             iconType="eye"
             size="s"
-            isDisabled
+            isDisabled={!viewInAppUrl}
+            onClick={() => viewInAppUrl && window.open(viewInAppUrl)}
           />
         </EuiToolTip>
       </EuiFlexItem>

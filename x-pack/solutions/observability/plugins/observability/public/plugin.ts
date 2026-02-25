@@ -263,6 +263,7 @@ export class Plugin
     this.telemetry.setup(coreSetup.analytics);
 
     this.observabilityRuleTypeRegistry = createObservabilityRuleTypeRegistry(
+      pluginsSetup.observabilityShared.observabilityRuleTypeRegistry,
       pluginsSetup.triggersActionsUi.ruleTypeRegistry
     );
 

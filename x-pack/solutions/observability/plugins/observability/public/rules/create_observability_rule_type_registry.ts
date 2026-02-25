@@ -5,18 +5,26 @@
  * 2.0.
  */
 
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
+ */
+
 import type {
   RuleTypeModel,
   RuleTypeParams,
   RuleTypeRegistryContract,
 } from '@kbn/triggers-actions-ui-plugin/public';
-import type { ParsedTechnicalFields } from '@kbn/rule-registry-plugin/common/parse_technical_fields';
-import type { AsDuration, AsPercent } from '../../common/utils/formatters';
+import type {
+  ObservabilityFormatterRegistry,
+  ObservabilityRuleTypeFormatter,
+  AsDuration,
+  AsPercent,
+} from '@kbn/observability-shared-plugin/public';
 
-export type ObservabilityRuleTypeFormatter = (options: {
-  fields: ParsedTechnicalFields & Record<string, any>;
-  formatters: { asDuration: AsDuration; asPercent: AsPercent };
-}) => { reason: string; link?: string; hasBasePath?: boolean };
+export type { ObservabilityRuleTypeFormatter, AsDuration, AsPercent };
 
 export interface ObservabilityRuleTypeModel<Params extends RuleTypeParams = RuleTypeParams>
   extends RuleTypeModel<Params> {
@@ -24,25 +32,23 @@ export interface ObservabilityRuleTypeModel<Params extends RuleTypeParams = Rule
   priority?: number;
 }
 
-export function createObservabilityRuleTypeRegistry(ruleTypeRegistry: RuleTypeRegistryContract) {
-  const formatters: Array<{
-    typeId: string;
-    priority: number;
-    fn: ObservabilityRuleTypeFormatter;
-  }> = [];
-
+/**
+ * Full registry: registers rule type models into both the UI rule type registry
+ * (triggersActionsUi) and the shared formatter registry (observabilityShared).
+ */
+export const createObservabilityRuleTypeRegistry = (
+  formatterRegistry: ObservabilityFormatterRegistry,
+  ruleTypeRegistry: RuleTypeRegistryContract
+) => {
   return {
     register: (type: ObservabilityRuleTypeModel<any>) => {
       const { format, priority, ...rest } = type;
-      formatters.push({ typeId: type.id, priority: priority || 0, fn: format });
+      formatterRegistry.register(type.id, format, priority ?? 0);
       ruleTypeRegistry.register(rest);
     },
-    getFormatter: (typeId: string) => {
-      return formatters.find((formatter) => formatter.typeId === typeId)?.fn;
-    },
-    list: () =>
-      formatters.sort((a, b) => b.priority - a.priority).map((formatter) => formatter.typeId),
+    getFormatter: (typeId: string) => formatterRegistry.getFormatter(typeId),
+    list: () => formatterRegistry.list(),
   };
-}
+};
 
 export type ObservabilityRuleTypeRegistry = ReturnType<typeof createObservabilityRuleTypeRegistry>;
