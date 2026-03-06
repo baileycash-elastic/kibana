@@ -138,13 +138,25 @@ export function RuleComponent({
     executionStatusTranslations: rulesStatusesTranslationsMapping,
   });
 
-  const alertDetailsNavigation = useMemo<AlertDetailsNavigation>(
-    () => ({
-      appId: 'observability',
-      getPath: (alertId: string) => `/alerts/${encodeURIComponent(alertId)}`,
-    }),
-    []
-  );
+  const hasObservabilityAccess = useMemo(() => {
+    const { capabilities } = application;
+    const { apm, metrics, uptime, synthetics, slo } = capabilities.navLinks;
+    const logs = capabilities.logs?.show;
+    return [apm, metrics, uptime, synthetics, slo, logs].some(Boolean);
+  }, [application]);
+
+  const alertDetailsNavigation = useMemo<AlertDetailsNavigation | undefined>(() => {
+    if (hasObservabilityAccess) {
+      return {
+        appId: 'observability',
+        getPath: (alertId: string) => `/alerts/${encodeURIComponent(alertId)}`,
+      };
+    }
+
+    return undefined;
+  }, [hasObservabilityAccess]);
+
+  const casesOwner = hasObservabilityAccess ? 'observability' : 'cases';
 
   const renderRuleAlertList = useCallback(() => {
     if (ruleType.hasAlertsMappings) {
@@ -162,7 +174,7 @@ export function RuleComponent({
           alertDetailsNavigation={alertDetailsNavigation}
           casesConfiguration={{
             featureId: 'management',
-            owner: ['cases'],
+            owner: [casesOwner],
           }}
           services={{
             data,
@@ -179,6 +191,7 @@ export function RuleComponent({
   }, [
     alertDetailsNavigation,
     application,
+    casesOwner,
     data,
     fieldFormats,
     getAlertFormatter,
