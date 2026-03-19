@@ -33,7 +33,6 @@ import {
   type CustomMetricExpressionParams,
   type MetricExpressionParams,
   type ThresholdParams,
-  type NoDataBehavior,
 } from '../../../common/custom_threshold_rule/types';
 import type { ObservabilityPublicStart } from '../../plugin';
 
@@ -60,7 +59,6 @@ export interface AlertParams {
   alertOnGroupDisappear?: boolean;
   searchConfiguration: CustomThresholdSearchSourceFields;
   shouldDropPartialBuckets?: boolean;
-  noDataBehavior?: NoDataBehavior;
 }
 
 export interface InfraClientStartDeps {

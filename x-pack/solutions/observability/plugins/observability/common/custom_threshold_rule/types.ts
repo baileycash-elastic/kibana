@@ -51,8 +51,6 @@ export enum AlertStates {
   ERROR,
 }
 
-export type NoDataBehavior = 'recover' | 'remainActive' | 'alertOnNoData';
-
 // Types for the executor
 export interface CustomThresholdSearchSourceFields extends SerializedSearchSourceFields {
   query?: Query;
@@ -65,7 +63,6 @@ export interface ThresholdParams {
   sourceId?: string;
   alertOnNoData?: boolean;
   alertOnGroupDisappear?: boolean;
-  noDataBehavior?: NoDataBehavior;
   searchConfiguration: CustomThresholdSearchSourceFields;
   groupBy?: string[];
 }
