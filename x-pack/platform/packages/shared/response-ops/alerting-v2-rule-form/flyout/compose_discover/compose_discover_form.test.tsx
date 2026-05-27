@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import type { UseFormReturn } from 'react-hook-form';
 import { QueryClientProvider } from '@kbn/react-query';
 import { __IntlProvider as IntlProvider } from '@kbn/i18n-react';
@@ -21,6 +21,13 @@ import type { ComposeFormValues, RuleQuery } from './compose_form_types';
 jest.mock('@kbn/code-editor', () => ({
   ...jest.requireActual('@kbn/code-editor'),
   CodeEditor: ({ value }: { value: string }) => <pre data-test-subj="codeEditorMock">{value}</pre>,
+}));
+
+jest.mock('@kbn/esql-utils', () => ({
+  getEsqlColumns: jest.fn().mockResolvedValue([]),
+  getESQLAdHocDataview: jest.fn().mockResolvedValue({
+    fields: { getByType: () => [], toSpec: () => ({}) },
+  }),
 }));
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -112,20 +119,46 @@ const renderRecoveryStep = (
   return { dispatch, state, onRecoveryTypeChange };
 };
 
+const renderAlertStep = (
+  stateOverrides: Partial<ComposeDiscoverState> = {},
+  queryOverride?: RuleQuery
+) => {
+  const state = createState({
+    queryCommitted: true,
+    ...stateOverrides,
+  });
+  const dispatch = jest.fn();
+  const services = createMockServices();
+  const steps = getSteps(true);
+  const alertStep = steps.find((s) => s.id === 'alertCondition')!;
+
+  render(
+    alertStep.render({
+      state,
+      dispatch,
+      services,
+      onRecoveryTypeChange: jest.fn(),
+    }) as React.ReactElement,
+    { wrapper: createComposeFormWrapper(queryOverride, services) }
+  );
+
+  return { dispatch, state, services };
+};
+
 // ── step validation ───────────────────────────────────────────────────────────
 
 describe('step validation', () => {
   describe('alertCondition.validate', () => {
     const alertStep = getSteps(false).find((s) => s.id === 'alertCondition')!;
 
-    it('returns true when queryCommitted is true', async () => {
+    it('returns true when queryCommitted is true and timeField is set', async () => {
       const state = createState({ queryCommitted: true });
       const methods = {
-        trigger: jest.fn().mockResolvedValue(true),
+        getValues: jest.fn().mockReturnValue('@timestamp'),
       } as unknown as UseFormReturn<ComposeFormValues>;
 
       expect(await alertStep.validate!(methods, state)).toBe(true);
-      expect(methods.trigger).toHaveBeenCalledWith('timeField');
+      expect(methods.getValues).toHaveBeenCalledWith('timeField');
     });
 
     it('returns false when queryCommitted is false', async () => {
@@ -231,5 +264,56 @@ describe('RecoveryConditionStep', () => {
     fireEvent.click(screen.getByTestId('composeDiscoverEditRecovery'));
 
     expect(dispatch).toHaveBeenCalledWith({ type: 'OPEN_CHILD_FOR_STEP', step: state.step });
+  });
+});
+
+// ── AlertConditionStep group-by auto-population ───────────────────────────────
+
+describe('AlertConditionStep', () => {
+  describe('group-by auto-population in tracking mode', () => {
+    it('extracts BY columns from the base query (composed format)', async () => {
+      const composedQuery: RuleQuery = {
+        format: 'composed',
+        base: 'FROM logs-*\n| STATS count = COUNT(*) BY host.name',
+        blocks: { breach: '| WHERE count > 100' },
+      };
+
+      renderAlertStep({ queryCommitted: true }, composedQuery);
+
+      await waitFor(() => {
+        expect(screen.getByText('host.name')).toBeInTheDocument();
+      });
+    });
+
+    it('extracts multiple BY columns from the base query', async () => {
+      const composedQuery: RuleQuery = {
+        format: 'composed',
+        base: 'FROM kibana_sample_data_ecommerce\n| STATS total = SUM(taxful_total_price) BY customer_gender, day_of_week',
+        blocks: { breach: '| WHERE total > 1000' },
+      };
+
+      renderAlertStep({ queryCommitted: true }, composedQuery);
+
+      await waitFor(() => {
+        expect(screen.getByText('customer_gender')).toBeInTheDocument();
+        expect(screen.getByText('day_of_week')).toBeInTheDocument();
+      });
+    });
+
+    it('does not populate group fields when the base query has no STATS BY', async () => {
+      const composedQuery: RuleQuery = {
+        format: 'composed',
+        base: 'FROM logs-*\n| STATS count = COUNT(*)',
+        blocks: { breach: '| WHERE count > 100' },
+      };
+
+      renderAlertStep({ queryCommitted: true }, composedQuery);
+
+      const comboBox = screen.getByTestId('composeDiscoverGroupFields');
+      await waitFor(() => {
+        expect(comboBox).toBeInTheDocument();
+      });
+      expect(comboBox.querySelectorAll('[data-test-subj="euiComboBoxPill"]')).toHaveLength(0);
+    });
   });
 });
