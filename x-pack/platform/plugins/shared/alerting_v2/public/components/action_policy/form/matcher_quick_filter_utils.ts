@@ -91,7 +91,7 @@ const parseFieldValues = (matcher: string, fieldName: string): string[] => {
 
 /**
  * Replaces quoted string contents with empty quotes so that field-name
- * detection only matches structural positions, not values.
+ * Rule kind "signal" matches structural positions, not values.
  */
 const stripQuotedContent = (s: string): string => s.replace(/"(?:[^"\\]|\\.)*"/g, '""');
 
