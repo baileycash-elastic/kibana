@@ -110,6 +110,8 @@ export interface RulesListTableProps {
   onDelete: (rule: RuleApiResponse) => void;
   onToggleEnabled: (rule: RuleApiResponse) => void;
   onRun: (rule: RuleApiResponse) => void;
+  /** When provided, adds View change history to each row actions menu. */
+  onViewChangeHistory?: (rule: RuleApiResponse) => void;
   /** Id of the rule whose enabled state is currently being toggled, if any. */
   togglingRuleId?: string;
   /** True while a bulk enable/disable mutation is in flight, so individual switches don't race it. */
@@ -149,6 +151,7 @@ export const RulesListTable: React.FC<RulesListTableProps> = ({
   onDelete,
   onToggleEnabled,
   onRun,
+  onViewChangeHistory,
   togglingRuleId,
   isBulkTogglingEnabled,
   onTableChange,
@@ -432,6 +435,7 @@ export const RulesListTable: React.FC<RulesListTableProps> = ({
                       onClone={onClone}
                       onDelete={onDelete}
                       onRun={onRun}
+                      onViewChangeHistory={onViewChangeHistory}
                     />
                   </EuiFlexItem>
                 </EuiFlexGroup>
@@ -454,6 +458,7 @@ export const RulesListTable: React.FC<RulesListTableProps> = ({
       onDelete,
       onToggleEnabled,
       onRun,
+      onViewChangeHistory,
       togglingRuleId,
       isBulkTogglingEnabled,
     ]
