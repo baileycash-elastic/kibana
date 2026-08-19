@@ -112,60 +112,25 @@ export const HEADER_EPISODE_TITLE_FALLBACK = i18n.translate(
   }
 );
 
-/** --- Lifecycle heatmap --- */
-export const LIFECYCLE_HEATMAP_TITLE = i18n.translate(
-  'xpack.alertingV2EpisodesUi.details.lifecycleHeatmap.title',
+/** --- Episode lifecycle Gantt --- */
+export const EPISODE_LIFECYCLE_TITLE = i18n.translate(
+  'xpack.alertingV2EpisodesUi.details.episodeLifecycle.title',
   {
-    defaultMessage: 'Episode timeline',
+    defaultMessage: 'Episode lifecycle',
   }
 );
 
-export const LIFECYCLE_HEATMAP_EMPTY_TITLE = i18n.translate(
-  'xpack.alertingV2EpisodesUi.details.lifecycleHeatmap.emptyTitle',
+export const EPISODE_LIFECYCLE_EMPTY_TITLE = i18n.translate(
+  'xpack.alertingV2EpisodesUi.details.episodeLifecycle.emptyTitle',
   {
     defaultMessage: 'No events in this episode yet',
   }
 );
 
-export const LIFECYCLE_HEATMAP_EMPTY_BODY = i18n.translate(
-  'xpack.alertingV2EpisodesUi.details.lifecycleHeatmap.emptyBody',
+export const EPISODE_LIFECYCLE_EMPTY_BODY = i18n.translate(
+  'xpack.alertingV2EpisodesUi.details.episodeLifecycle.emptyBody',
   {
     defaultMessage: 'Status changes across the episode lifecycle will appear here.',
-  }
-);
-
-export const LIFECYCLE_HEATMAP_PENDING_STATUS_LABEL = i18n.translate(
-  'xpack.alertingV2EpisodesUi.details.lifecycleHeatmap.pendingStatusLabel',
-  {
-    defaultMessage: 'Pending',
-  }
-);
-
-export const LIFECYCLE_HEATMAP_ACTIVE_STATUS_LABEL = i18n.translate(
-  'xpack.alertingV2EpisodesUi.details.lifecycleHeatmap.activeStatusLabel',
-  {
-    defaultMessage: 'Active',
-  }
-);
-
-export const LIFECYCLE_HEATMAP_RECOVERING_STATUS_LABEL = i18n.translate(
-  'xpack.alertingV2EpisodesUi.details.lifecycleHeatmap.recoveringStatusLabel',
-  {
-    defaultMessage: 'Recovering',
-  }
-);
-
-export const LIFECYCLE_HEATMAP_INACTIVE_STATUS_LABEL = i18n.translate(
-  'xpack.alertingV2EpisodesUi.details.lifecycleHeatmap.inactiveStatusLabel',
-  {
-    defaultMessage: 'Inactive',
-  }
-);
-
-export const LIFECYCLE_HEATMAP_UNKNOWN_STATUS_LABEL = i18n.translate(
-  'xpack.alertingV2EpisodesUi.details.lifecycleHeatmap.unknownStatusLabel',
-  {
-    defaultMessage: 'Unknown',
   }
 );
 

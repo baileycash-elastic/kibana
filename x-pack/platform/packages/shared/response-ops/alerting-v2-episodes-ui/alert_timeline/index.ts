@@ -17,6 +17,8 @@ export type {
 } from './types';
 export { ALERT_TIMELINE_TOP_N_DEFAULT } from './types';
 export { deriveAlertTimelineData } from './derive_alert_timeline_data';
+export { deriveEpisodeLifecycleRow } from './derive_episode_lifecycle_row';
+export type { EpisodeLifecycleRow } from './derive_episode_lifecycle_row';
 export { applyEpisodeStarts, makeEpisodeStartKey } from './apply_episode_starts';
 export { AlertTimelineRow } from './alert_timeline_row';
 export type { AlertTimelineRowProps } from './alert_timeline_row';
