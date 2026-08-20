@@ -498,20 +498,24 @@ export function ComposeDiscoverFlyout({
     noDataStrategy: watchedNoDataStrategy,
   });
 
-  const timeFieldResolutionQuery = useMemo(
+  const committedTimeFieldQuery = useMemo(
+    () => getTimeFieldResolutionQuery(watchedQuery, isAlert, uiState.queryCommitted),
+    [watchedQuery, isAlert, uiState.queryCommitted]
+  );
+
+  const sandboxTimeFieldQuery = useMemo(
     () =>
       getTimeFieldResolutionQuery(
-        uiState.childOpen ? sandboxQuery : watchedQuery,
+        sandboxQuery,
         isAlert,
         uiState.queryCommitted || uiState.childOpen
       ),
-    [uiState.childOpen, uiState.queryCommitted, sandboxQuery, watchedQuery, isAlert]
+    [sandboxQuery, isAlert, uiState.queryCommitted, uiState.childOpen]
   );
 
-  const handleResolvedTimeFieldChange = useCallback(
+  const handleCommittedTimeFieldChange = useCallback(
     (field: string) => {
       if (uiState.childOpen) {
-        setSandboxTimeField(field);
         return;
       }
       methods.setValue('timeField', field, { shouldDirty: false });
@@ -520,24 +524,28 @@ export function ComposeDiscoverFlyout({
     [methods, uiState.childOpen]
   );
 
-  const { timeFieldOptions, isTimeFieldResolved } = useResolveTimeField({
-    query: timeFieldResolutionQuery,
-    timeField: (uiState.childOpen ? sandboxTimeField : watchedTimeField) ?? '@timestamp',
-    onTimeFieldChange: handleResolvedTimeFieldChange,
+  const handleSandboxTimeFieldChange = useCallback((field: string) => {
+    setSandboxTimeField(field);
+  }, []);
+
+  const timeFieldResolution = useResolveTimeField({
+    query: committedTimeFieldQuery,
+    timeField: watchedTimeField ?? '',
+    onTimeFieldChange: handleCommittedTimeFieldChange,
     http: baseServices.http,
     dataViews: baseServices.dataViews,
     search: baseServices.data.search.search,
   });
 
-  /*
-   * Gate sandbox autoRun on the time field the sandbox actually executes with — not
-   * only the form value, which can lead autoRun by one render.
-   */
-  const sandboxIsTimeFieldResolved = useMemo(
-    () =>
-      isTimeFieldResolved && timeFieldOptions.some((option) => option.value === sandboxTimeField),
-    [isTimeFieldResolved, timeFieldOptions, sandboxTimeField]
-  );
+  const sandboxTimeFieldResolution = useResolveTimeField({
+    query: sandboxTimeFieldQuery,
+    timeField: sandboxTimeField ?? '',
+    onTimeFieldChange: handleSandboxTimeFieldChange,
+    enabled: uiState.childOpen,
+    http: baseServices.http,
+    dataViews: baseServices.dataViews,
+    search: baseServices.data.search.search,
+  });
 
   useEffect(() => {
     if (rule || initialQuery === undefined) {
@@ -1291,6 +1299,7 @@ export function ComposeDiscoverFlyout({
                       onRecoveryTypeChange={handleRecoveryTypeChange}
                       onKindChange={handleKindChange}
                       isEditing={isEditing}
+                      timeFieldResolution={timeFieldResolution}
                       ruleId={ruleId}
                       builderType={builderType}
                     />
@@ -1322,8 +1331,7 @@ export function ComposeDiscoverFlyout({
                 tabs={sandboxTabs}
                 timeField={sandboxTimeField}
                 onTimeFieldChange={isBuilderMode ? undefined : setSandboxTimeField}
-                timeFieldOptions={timeFieldOptions}
-                isTimeFieldResolved={sandboxIsTimeFieldResolved}
+                timeFieldResolution={sandboxTimeFieldResolution}
                 dateRange={dateRange}
                 onDateRangeChange={setDateRange}
                 activeTab={uiState.activeTab}

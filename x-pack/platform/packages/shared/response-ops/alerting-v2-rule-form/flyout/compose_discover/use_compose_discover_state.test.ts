@@ -19,7 +19,6 @@ describe('createInitialState', () => {
   it('creates default state for create mode (alert)', () => {
     const state = createInitialState({ mode: 'create' });
 
-    expect(state.mode).toBe('create');
     expect(state.childOpen).toBe(false);
     expect(state.queryCommitted).toBe(false);
     /*
@@ -48,10 +47,9 @@ describe('createInitialState', () => {
     expect(state.queryCommitted).toBe(true);
   });
 
-  it('sets childOpen false, queryCommitted true, and preserves clone mode (not aliased to edit)', () => {
+  it('sets childOpen false and queryCommitted true in clone mode', () => {
     const state = createInitialState({ mode: 'clone', initialKind: 'signal' });
 
-    expect(state.mode).toBe('clone');
     expect(state.childOpen).toBe(false);
     expect(state.queryCommitted).toBe(true);
   });

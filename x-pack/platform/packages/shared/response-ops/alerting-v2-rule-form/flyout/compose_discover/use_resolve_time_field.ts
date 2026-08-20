@@ -35,6 +35,58 @@ interface UseResolveTimeFieldParams {
   enabled?: boolean;
 }
 
+export interface TimeFieldOption {
+  value: string;
+  text: string;
+}
+
+/**
+ * pending       – no source query, or discovery in flight.
+ * unverified    – discovery failed; the current selection is kept but unchecked.
+ * no_candidates – discovery succeeded and the source has no date field.
+ * resolved      – `timeFieldOptions` holds the selectable date fields.
+ */
+export type TimeFieldStatus = 'pending' | 'unverified' | 'no_candidates' | 'resolved';
+
+export interface TimeFieldResolution {
+  status: TimeFieldStatus;
+  /** Selectable date fields. Always empty unless `status` is `resolved`. */
+  timeFieldOptions: TimeFieldOption[];
+  /** Field the hook would auto-select; `null` when none can be resolved. */
+  resolvedTimeField: string | null;
+}
+
+export interface TimeFieldSelectState {
+  options: TimeFieldOption[];
+  /** `''` whenever the current value isn't selectable, so the select shows a placeholder. */
+  value: string;
+  hasNoInitialSelection: boolean;
+  isDisabled: boolean;
+  isInvalid: boolean;
+  /** Whether the current selection is trustworthy enough to execute a query with. */
+  isExecutable: boolean;
+}
+
+/** Maps a resolution to time-field select props. */
+export const getTimeFieldSelectState = (
+  { status, timeFieldOptions }: TimeFieldResolution,
+  timeField: string
+): TimeFieldSelectState => {
+  const currentIsOption = timeFieldOptions.some((option) => option.value === timeField);
+
+  return {
+    options: timeFieldOptions,
+    value: currentIsOption ? timeField : '',
+    hasNoInitialSelection: !currentIsOption,
+    isDisabled: status === 'pending',
+    isInvalid: status === 'no_candidates' || (status === 'resolved' && !currentIsOption),
+    // `unverified` means discovery errored: keep the saved field runnable rather
+    // than blocking the preview on a failure we couldn't confirm.
+    isExecutable:
+      (status === 'resolved' && currentIsOption) || (status === 'unverified' && timeField !== ''),
+  };
+};
+
 /**
  * Resolves the correct time field for an ES|QL rule by inspecting the source
  * index (FROM-only query). Falls back to the ES|QL timefield API when field
@@ -49,7 +101,7 @@ export const useResolveTimeField = ({
   dataViews,
   search,
   enabled = true,
-}: UseResolveTimeFieldParams) => {
+}: UseResolveTimeFieldParams): TimeFieldResolution => {
   const fromSourceQuery = useMemo(() => extractFromSourceQuery(query), [query]);
   const resolutionQuery = enabled ? fromSourceQuery : '';
 
@@ -98,57 +150,35 @@ export const useResolveTimeField = ({
 
   const isLoadingResolution = isLoadingFields || (needsApiTimeField && isLoadingApiTimeField);
 
-  const timeFieldOptions = useMemo(() => {
-    if (!fromSourceQuery || isLoadingResolution) {
-      return [];
-    }
-    if (dateFields.length > 0) {
-      return dateFields.map((name) => ({ value: name, text: name }));
-    }
-    if (apiTimeField) {
-      return [{ value: apiTimeField, text: apiTimeField }];
-    }
-    // No date field on the index: don't fabricate `@timestamp`. Callers show a
-    // placeholder/invalid state so the user must select (or fix the query).
-    return [];
-  }, [fromSourceQuery, isLoadingResolution, dateFields, apiTimeField]);
-
   // Field discovery failed and neither the API fallback nor field-caps returned
   // any date fields. We can't distinguish a transient introspection error from a
   // genuinely date-field-free index, so preserve the existing selection rather
   // than clearing it.
-  const isDiscoveryErrored =
-    isFieldMapError && !isLoadingApiTimeField && candidateDateFields.length === 0;
+  const isDiscoveryErrored = isFieldMapError && candidateDateFields.length === 0;
 
-  const isTimeFieldResolved = useMemo(() => {
-    if (!enabled || !fromSourceQuery) {
-      return true;
+  const status: TimeFieldStatus = useMemo(() => {
+    if (!enabled || !fromSourceQuery || isLoadingResolution) {
+      return 'pending';
     }
-    if (isLoadingResolution) {
-      return false;
-    }
-    // Treat the current value as unverified-but-valid when discovery errored so
-    // the form can still be submitted; the warning callout already surfaces the issue.
     if (isDiscoveryErrored) {
-      return true;
+      return 'unverified';
     }
-    return timeField === resolvedTimeField;
-  }, [
-    enabled,
-    fromSourceQuery,
-    isLoadingResolution,
-    isDiscoveryErrored,
-    resolvedTimeField,
-    timeField,
-  ]);
+    return candidateDateFields.length > 0 ? 'resolved' : 'no_candidates';
+  }, [enabled, fromSourceQuery, isLoadingResolution, isDiscoveryErrored, candidateDateFields]);
+
+  const timeFieldOptions = useMemo(
+    () =>
+      status === 'resolved' ? candidateDateFields.map((name) => ({ value: name, text: name })) : [],
+    [status, candidateDateFields]
+  );
 
   useEffect(() => {
-    if (!enabled || !onTimeFieldChange || !fromSourceQuery || isLoadingResolution) {
+    if (!onTimeFieldChange) {
       return;
     }
-    // When discovery errored and no fallback succeeded, we can't tell whether the
-    // index genuinely has no date fields. Preserve the saved timeField; don't clear it.
-    if (isDiscoveryErrored) {
+    // `pending` has nothing to correct towards yet, and `unverified` must not
+    // clear a saved field we simply failed to check.
+    if (status !== 'resolved' && status !== 'no_candidates') {
       return;
     }
     // Sync the form value to the resolved field. `null` (no resolvable date field
@@ -159,18 +189,11 @@ export const useResolveTimeField = ({
     if (nextTimeField !== timeField) {
       onTimeFieldChange(nextTimeField);
     }
-  }, [
-    enabled,
-    fromSourceQuery,
-    isLoadingResolution,
-    isDiscoveryErrored,
-    resolvedTimeField,
-    timeField,
-    onTimeFieldChange,
-  ]);
+  }, [status, resolvedTimeField, timeField, onTimeFieldChange]);
 
   return {
+    status,
     timeFieldOptions,
-    isTimeFieldResolved,
+    resolvedTimeField,
   };
 };

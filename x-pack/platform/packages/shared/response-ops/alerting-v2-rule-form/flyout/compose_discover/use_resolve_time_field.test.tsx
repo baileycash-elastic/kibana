@@ -14,7 +14,7 @@ import { getESQLTimeField } from '@kbn/esql-utils';
 import { createTestQueryClient } from '../../test_utils';
 import { useDataFields } from '../../form/hooks/use_data_fields';
 import { ruleFormKeys } from '../../form/hooks/query_key_factory';
-import { useResolveTimeField } from './use_resolve_time_field';
+import { getTimeFieldSelectState, useResolveTimeField } from './use_resolve_time_field';
 
 jest.mock('@kbn/esql-utils', () => ({
   ...jest.requireActual('@kbn/esql-utils'),
@@ -73,7 +73,8 @@ describe('useResolveTimeField', () => {
     // Current field `@timestamp` is not on the index: clear it (never substitute
     // `timestamp`) so the user is forced to pick.
     expect(onTimeFieldChange).toHaveBeenCalledWith('');
-    expect(result.current.isTimeFieldResolved).toBe(false);
+    expect(result.current.status).toBe('resolved');
+    expect(getTimeFieldSelectState(result.current, '@timestamp').isInvalid).toBe(true);
   });
 
   it('offers the ES|QL timefield API result as an option but clears the invalid current field', async () => {
@@ -97,7 +98,8 @@ describe('useResolveTimeField', () => {
       expect(result.current.timeFieldOptions).toEqual([{ value: 'timestamp', text: 'timestamp' }]);
     });
     expect(onTimeFieldChange).toHaveBeenCalledWith('');
-    expect(result.current.isTimeFieldResolved).toBe(false);
+    expect(result.current.status).toBe('resolved');
+    expect(getTimeFieldSelectState(result.current, '@timestamp').isInvalid).toBe(true);
   });
 
   it('does not call onTimeFieldChange when the current time field is valid', async () => {
@@ -124,7 +126,7 @@ describe('useResolveTimeField', () => {
     });
   });
 
-  it('preserves the saved timeField and reports isTimeFieldResolved true when field discovery errors', async () => {
+  it('preserves the saved timeField and reports unverified when field discovery errors', async () => {
     const onTimeFieldChange = jest.fn();
     (useDataFields as jest.Mock).mockReturnValue({
       data: {},
@@ -149,8 +151,9 @@ describe('useResolveTimeField', () => {
     // ...but nothing clears the saved timeField.
     expect(onTimeFieldChange).not.toHaveBeenCalled();
     // The existing selection is treated as unverified-but-valid so the form
-    // remains submittable; the warning callout surfaces the discovery failure.
-    expect(result.current.isTimeFieldResolved).toBe(true);
+    // remains submittable rather than being flagged invalid.
+    expect(result.current.status).toBe('unverified');
+    expect(getTimeFieldSelectState(result.current, 'event.start').isInvalid).toBe(false);
   });
 
   it('clears the current field (does not fabricate) when none can be resolved', async () => {
@@ -170,12 +173,13 @@ describe('useResolveTimeField', () => {
       expect(getESQLTimeField).toHaveBeenCalled();
     });
     expect(onTimeFieldChange).toHaveBeenCalledWith('');
-    expect(result.current.isTimeFieldResolved).toBe(false);
+    expect(result.current.status).toBe('no_candidates');
+    expect(getTimeFieldSelectState(result.current, 'event.start').isInvalid).toBe(true);
   });
 
-  it('keeps isTimeFieldResolved false when no date field exists, even if timeField is @timestamp', async () => {
+  it('stays no_candidates when no date field exists, even if timeField is @timestamp', async () => {
     // fieldMap is empty and API returns nothing (default mocks in beforeEach).
-    // resolvedTimeField is null, so no timeField value can be considered resolved.
+    // No candidate exists, so no timeField value can be selectable.
     const { result, rerender } = renderHook(
       ({ timeField }: { timeField: string }) =>
         useResolveTimeField({
@@ -189,15 +193,16 @@ describe('useResolveTimeField', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.isTimeFieldResolved).toBe(false);
+      expect(result.current.status).toBe('no_candidates');
     });
 
     rerender({ timeField: '@timestamp' });
 
-    // Still false — no date fields were discovered so resolvedTimeField is null,
-    // and no timeField value can be considered "resolved".
+    // Still no_candidates — no date fields were discovered, so nothing is selectable
+    // regardless of which value the form holds.
     await waitFor(() => {
-      expect(result.current.isTimeFieldResolved).toBe(false);
+      expect(result.current.status).toBe('no_candidates');
+      expect(result.current.timeFieldOptions).toEqual([]);
     });
   });
 
@@ -314,11 +319,12 @@ describe('useResolveTimeField', () => {
       );
       expect(onTimeFieldChange).not.toHaveBeenCalled();
       expect(getESQLTimeField).not.toHaveBeenCalled();
-      expect(result.current.isTimeFieldResolved).toBe(true);
+      expect(result.current.status).toBe('pending');
+      expect(result.current.timeFieldOptions).toEqual([]);
     });
   });
 
-  it('reports isTimeFieldResolved once correction completes', async () => {
+  it('reports resolved once correction completes', async () => {
     (useDataFields as jest.Mock).mockReturnValue({
       data: {
         timestamp: { name: 'timestamp', type: 'date', searchable: true, aggregatable: true },
@@ -336,12 +342,13 @@ describe('useResolveTimeField', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.isTimeFieldResolved).toBe(true);
+      expect(result.current.status).toBe('resolved');
       expect(result.current.timeFieldOptions).toEqual([{ value: 'timestamp', text: 'timestamp' }]);
     });
+    expect(getTimeFieldSelectState(result.current, 'timestamp').isInvalid).toBe(false);
   });
 
-  it('reports isTimeFieldResolved true when timeField is valid but not the first date field alphabetically', async () => {
+  it('treats a valid timeField as selectable even when it is not first alphabetically', async () => {
     (useDataFields as jest.Mock).mockReturnValue({
       data: {
         'event.end': { name: 'event.end', type: 'date', searchable: true, aggregatable: true },
@@ -360,13 +367,49 @@ describe('useResolveTimeField', () => {
     );
 
     await waitFor(() => {
-      expect(result.current.isTimeFieldResolved).toBe(true);
+      expect(result.current.status).toBe('resolved');
     });
 
+    expect(getTimeFieldSelectState(result.current, 'event.start')).toMatchObject({
+      value: 'event.start',
+      isInvalid: false,
+      isExecutable: true,
+    });
     expect(result.current.timeFieldOptions).toEqual([
       { value: 'event.end', text: 'event.end' },
       { value: 'event.start', text: 'event.start' },
     ]);
+  });
+
+  it('withholds options while resolution is in flight so a refetch cannot offer stale fields', async () => {
+    (useDataFields as jest.Mock).mockReturnValue({
+      data: {
+        'event.start': { name: 'event.start', type: 'date', searchable: true, aggregatable: true },
+      },
+      isLoading: true,
+    });
+
+    const { result } = renderHook(
+      () => useResolveTimeField({ ...defaultParams, timeField: 'event.start' }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('pending');
+    });
+    expect(result.current.timeFieldOptions).toEqual([]);
+  });
+
+  it('reports pending when the query has no source command', async () => {
+    const { result } = renderHook(
+      () => useResolveTimeField({ ...defaultParams, query: '| WHERE a > 1' }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('pending');
+    });
+    expect(result.current.timeFieldOptions).toEqual([]);
   });
 
   it('uses ruleFormKeys for the API fallback query key', () => {
@@ -400,6 +443,72 @@ describe('useResolveTimeField', () => {
     expect(useDataFields).toHaveBeenCalledWith(expect.objectContaining({ search: undefined }));
   });
 
+  describe('getTimeFieldSelectState', () => {
+    const resolved = {
+      status: 'resolved' as const,
+      timeFieldOptions: [{ value: '@timestamp', text: '@timestamp' }],
+      resolvedTimeField: '@timestamp',
+    };
+
+    it('disables without flagging invalid while pending', () => {
+      expect(
+        getTimeFieldSelectState(
+          { status: 'pending', timeFieldOptions: [], resolvedTimeField: null },
+          '@timestamp'
+        )
+      ).toEqual({
+        options: [],
+        value: '',
+        hasNoInitialSelection: true,
+        isDisabled: true,
+        isInvalid: false,
+        isExecutable: false,
+      });
+    });
+
+    it('leaves an unverified selection enabled, unflagged, and executable so the preview still runs', () => {
+      expect(
+        getTimeFieldSelectState(
+          { status: 'unverified', timeFieldOptions: [], resolvedTimeField: null },
+          'event.start'
+        )
+      ).toMatchObject({ isDisabled: false, isInvalid: false, isExecutable: true });
+    });
+
+    it('is not executable when unverified with no saved time field', () => {
+      expect(
+        getTimeFieldSelectState(
+          { status: 'unverified', timeFieldOptions: [], resolvedTimeField: null },
+          ''
+        )
+      ).toMatchObject({ isDisabled: false, isInvalid: false, isExecutable: false });
+    });
+
+    it('flags invalid but stays enabled when the source has no date field', () => {
+      expect(
+        getTimeFieldSelectState(
+          { status: 'no_candidates', timeFieldOptions: [], resolvedTimeField: null },
+          '@timestamp'
+        )
+      ).toMatchObject({ isDisabled: false, isInvalid: true, isExecutable: false });
+    });
+
+    it('is executable only when the current value is one of the resolved options', () => {
+      expect(getTimeFieldSelectState(resolved, '@timestamp')).toMatchObject({
+        value: '@timestamp',
+        hasNoInitialSelection: false,
+        isInvalid: false,
+        isExecutable: true,
+      });
+      expect(getTimeFieldSelectState(resolved, 'event.start')).toMatchObject({
+        value: '',
+        hasNoInitialSelection: true,
+        isInvalid: true,
+        isExecutable: false,
+      });
+    });
+  });
+
   it('recognizes date_nanos fields as temporal and offers them for selection', async () => {
     const onTimeFieldChange = jest.fn();
     (useDataFields as jest.Mock).mockReturnValue({
@@ -430,7 +539,8 @@ describe('useResolveTimeField', () => {
       expect(onTimeFieldChange).toHaveBeenCalledWith('');
     });
     expect(result.current.timeFieldOptions).toEqual([{ value: 'event_time', text: 'event_time' }]);
-    expect(result.current.isTimeFieldResolved).toBe(false);
+    expect(result.current.status).toBe('resolved');
+    expect(getTimeFieldSelectState(result.current, '@timestamp').isInvalid).toBe(true);
   });
 
   it('recognizes ES|QL datetime columns as temporal and offers them for selection', async () => {
@@ -463,6 +573,7 @@ describe('useResolveTimeField', () => {
       expect(onTimeFieldChange).toHaveBeenCalledWith('');
     });
     expect(result.current.timeFieldOptions).toEqual([{ value: 'event_time', text: 'event_time' }]);
-    expect(result.current.isTimeFieldResolved).toBe(false);
+    expect(result.current.status).toBe('resolved');
+    expect(getTimeFieldSelectState(result.current, '@timestamp').isInvalid).toBe(true);
   });
 });

@@ -25,6 +25,7 @@ import { createTestQueryClient } from '../../test_utils';
 import { ComposeDiscoverFlyout } from './compose_discover_flyout';
 import type { ComposeDiscoverFlyoutProps } from './compose_discover_flyout';
 import type { ComposeDiscoverForm } from './compose_discover_form';
+import type { TimeFieldResolution } from './use_resolve_time_field';
 
 type FormProps = React.ComponentProps<typeof ComposeDiscoverForm>;
 
@@ -128,7 +129,7 @@ interface SandboxFlyoutMockProps {
   onQueryChange?: (query: RuleQuery) => void;
   timeField?: string;
   onTimeFieldChange?: (timeField: string) => void;
-  timeFieldOptions?: Array<{ value: string; text: string }>;
+  timeFieldResolution?: TimeFieldResolution;
   onApply?: () => void;
   onClose: () => void;
   helpText?: React.ReactNode;
@@ -139,6 +140,8 @@ let sandboxFlyoutProps: SandboxFlyoutMockProps | undefined;
 let readCommittedQuery: (() => RuleQuery) | undefined;
 let readRecoveryStrategy: (() => FormValues['recoveryStrategy']) | undefined;
 let readTimeField: (() => FormValues['timeField']) | undefined;
+let autoCorrectCommittedTimeField: ((timeField: string) => void) | undefined;
+let autoCorrectSandboxTimeField: ((timeField: string) => void) | undefined;
 
 jest.mock('./query_sandbox_flyout', () => ({
   QuerySandboxFlyout: (props: SandboxFlyoutMockProps) => {
@@ -154,7 +157,7 @@ jest.mock('./query_sandbox_flyout', () => ({
             value={props.timeField}
             onChange={(e) => props.onTimeFieldChange?.(e.target.value)}
           >
-            {props.timeFieldOptions?.map((option) => (
+            {props.timeFieldResolution?.timeFieldOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.text}
               </option>
@@ -187,13 +190,25 @@ jest.mock('./use_split_query_completion', () => ({
 }));
 
 jest.mock('./use_resolve_time_field', () => ({
-  useResolveTimeField: () => ({
-    timeFieldOptions: [
-      { value: '@timestamp', text: '@timestamp' },
-      { value: 'event.ingested', text: 'event.ingested' },
-    ],
-    isTimeFieldResolved: true,
-  }),
+  ...jest.requireActual('./use_resolve_time_field'),
+  useResolveTimeField: jest.fn(
+    (params: { onTimeFieldChange?: (timeField: string) => void; enabled?: boolean }) => {
+      // Sandbox resolution always passes `enabled`; committed resolution never does.
+      if (Object.prototype.hasOwnProperty.call(params, 'enabled')) {
+        autoCorrectSandboxTimeField = params.onTimeFieldChange;
+      } else {
+        autoCorrectCommittedTimeField = params.onTimeFieldChange;
+      }
+      return {
+        status: 'resolved',
+        timeFieldOptions: [
+          { value: '@timestamp', text: '@timestamp' },
+          { value: 'event.ingested', text: 'event.ingested' },
+        ],
+        resolvedTimeField: '@timestamp',
+      };
+    }
+  ),
 }));
 
 jest.mock('../../form/hooks/use_data_fields', () => ({
@@ -332,6 +347,8 @@ describe('ComposeDiscoverFlyout', () => {
     readCommittedQuery = undefined;
     readRecoveryStrategy = undefined;
     readTimeField = undefined;
+    autoCorrectCommittedTimeField = undefined;
+    autoCorrectSandboxTimeField = undefined;
     mockParseYamlToFormValues = (yaml) => ({
       values: yaml ? defaultYamlFormValues : null,
       error: null,
@@ -1269,6 +1286,69 @@ describe('ComposeDiscoverFlyout', () => {
       });
 
       expect(readTimeField?.()).toBe('event.ingested');
+    });
+
+    it('keeps auto-correction out of the form while the sandbox is open, and discards it on close', () => {
+      renderFlyout({ mode: 'create' });
+      openSandbox();
+
+      act(() => {
+        autoCorrectSandboxTimeField?.('event.ingested');
+      });
+
+      expect((screen.getByTestId('querySandboxTimeField') as HTMLSelectElement).value).toBe(
+        'event.ingested'
+      );
+      expect(readTimeField?.()).toBe('@timestamp');
+
+      fireEvent.click(screen.getByTestId('composeDiscoverChildMockClose'));
+      act(() => {
+        getLatestFormProps().dispatch({ type: 'OPEN_CHILD_FOR_STEP', step: 0, isAlert: true });
+      });
+
+      expect((screen.getByTestId('querySandboxTimeField') as HTMLSelectElement).value).toBe(
+        '@timestamp'
+      );
+    });
+
+    it('applies auto-correction to the form while the sandbox is closed', () => {
+      renderFlyout({ mode: 'create' });
+
+      act(() => {
+        autoCorrectCommittedTimeField?.('event.ingested');
+      });
+
+      expect(readTimeField?.()).toBe('event.ingested');
+    });
+
+    it('resolves the form time field from the committed query, not the sandbox draft', () => {
+      const { useResolveTimeField } = jest.requireMock('./use_resolve_time_field') as {
+        useResolveTimeField: jest.Mock;
+      };
+      useResolveTimeField.mockClear();
+
+      renderFlyout({ mode: 'create' });
+      openSandbox();
+
+      act(() => {
+        sandboxFlyoutProps?.onQueryChange?.({
+          format: 'composed',
+          base: 'FROM kibana_sample_data_ecommerce',
+          breach: { segment: '' },
+        });
+      });
+
+      const enabledCalls = useResolveTimeField.mock.calls
+        .map(([params]) => params)
+        .filter((params: { enabled?: boolean }) => params.enabled !== false);
+
+      expect(enabledCalls.some((params: { query: string }) => params.query === '')).toBe(true);
+      expect(
+        enabledCalls.some((params: { query: string }) =>
+          params.query.includes('kibana_sample_data_ecommerce')
+        )
+      ).toBe(true);
+      expect(readTimeField?.()).toBe('@timestamp');
     });
 
     it('syncs a form-step time field change into the draft while the sandbox is closed', () => {

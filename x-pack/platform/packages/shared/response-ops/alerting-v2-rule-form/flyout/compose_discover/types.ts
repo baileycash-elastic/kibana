@@ -10,6 +10,7 @@ import type { FieldPath, UseFormReturn } from 'react-hook-form';
 import type { RuleFormServices } from '../../form/contexts/rule_form_context';
 import type { FormValues } from '../../form/types';
 import type { BuilderState } from './rule_builder/types';
+import type { TimeFieldResolution } from './use_resolve_time_field';
 
 export type ComposeDiscoverMode = 'create' | 'edit' | 'clone';
 
@@ -41,6 +42,7 @@ export interface StepRenderProps {
   onRecoveryTypeChange: (type: RecoveryType) => void;
   onKindChange: (kind: 'signal' | 'alert') => void;
   isEditing: boolean;
+  timeFieldResolution: TimeFieldResolution;
   ruleId?: string;
   renderCustomRecovery?: (props: CustomRecoveryRenderProps) => React.ReactNode;
 }
@@ -72,7 +74,6 @@ export interface StepDefinition {
  * mirrored here. Pass `isAlert` explicitly to any reducer action or helper that needs it.
  */
 export interface ComposeDiscoverState {
-  mode: ComposeDiscoverMode;
   step: number;
   /** 'default' = no_breach; 'custom' = query; 'none' = no recovery (persists as 'none'). */
   recoveryType: RecoveryType;

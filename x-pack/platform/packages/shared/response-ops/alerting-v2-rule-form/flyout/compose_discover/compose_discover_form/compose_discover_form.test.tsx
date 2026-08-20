@@ -25,6 +25,7 @@ import { RuleFormProvider, type RuleFormServices } from '../../../form/contexts'
 import { createMockServices, createTestQueryClient } from '../../../test_utils';
 import type { FormValues } from '../../../form/types';
 import type { ComposeDiscoverState } from '../types';
+import type { TimeFieldResolution } from '../use_resolve_time_field';
 import { createInitialState } from '../use_compose_discover_state';
 
 jest.mock('./alert_condition_step', () => ({
@@ -97,6 +98,12 @@ const createComposeFormWrapper = (
   };
 };
 
+const RESOLVED_TIME_FIELD: TimeFieldResolution = {
+  status: 'resolved',
+  timeFieldOptions: [{ value: '@timestamp', text: '@timestamp' }],
+  resolvedTimeField: '@timestamp',
+};
+
 const renderComposeDiscoverDetailsStep = (defaultValues: FormValues = BASE_COMPOSE_VALUES) =>
   render(
     <ComposeDiscoverForm
@@ -106,6 +113,7 @@ const renderComposeDiscoverDetailsStep = (defaultValues: FormValues = BASE_COMPO
       onRecoveryTypeChange={jest.fn()}
       onKindChange={jest.fn()}
       isEditing={false}
+      timeFieldResolution={RESOLVED_TIME_FIELD}
     />,
     { wrapper: createComposeFormWrapper(defaultValues) }
   );
@@ -310,6 +318,7 @@ describe('step validation', () => {
           onRecoveryTypeChange={jest.fn()}
           onKindChange={jest.fn()}
           isEditing={ruleId !== undefined}
+          timeFieldResolution={RESOLVED_TIME_FIELD}
           ruleId={ruleId}
         />,
         { wrapper: createComposeFormWrapper() }
@@ -360,6 +369,7 @@ describe('shell shared fields', () => {
         onRecoveryTypeChange={jest.fn()}
         onKindChange={jest.fn()}
         isEditing={isEditing}
+        timeFieldResolution={RESOLVED_TIME_FIELD}
       />,
       { wrapper: createComposeFormWrapper({ ...BASE_COMPOSE_VALUES, ...formOverrides }, services) }
     );
@@ -410,6 +420,7 @@ describe('shell shared fields', () => {
           onRecoveryTypeChange={jest.fn()}
           onKindChange={jest.fn()}
           isEditing={false}
+          timeFieldResolution={RESOLVED_TIME_FIELD}
           builderType="threshold"
         />
       </BuilderStateProvider>,

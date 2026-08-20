@@ -25,6 +25,7 @@ import { useEsqlCallbacks } from '../../form/hooks/use_esql_callbacks';
 import type { QueryTab } from './types';
 import { QuerySandbox } from './query_sandbox';
 import type { QuerySandboxProps } from './query_sandbox';
+import type { TimeFieldResolution } from './use_resolve_time_field';
 import { isAlertTabDisabled } from './compose_discover_tabs';
 import { validateTabQueries, type TabValidationError } from './validate_tab_queries';
 
@@ -68,8 +69,7 @@ export interface QuerySandboxFlyoutProps {
   /** Absent → time field selector is read-only. */
   onTimeFieldChange?: (tf: string) => void;
   /** When provided, resolution is owned by the parent and passed through to QuerySandbox. */
-  timeFieldOptions?: Array<{ value: string; text: string }>;
-  isTimeFieldResolved?: boolean;
+  timeFieldResolution?: TimeFieldResolution;
   /** Preview date range. Never resets on close — caller owns persistence. */
   dateRange: { dateStart: string; dateEnd: string };
   /** Always required — date range is always interactive. */
@@ -102,8 +102,7 @@ export const QuerySandboxFlyout: React.FC<QuerySandboxFlyoutProps> = ({
   onTabChange,
   timeField,
   onTimeFieldChange,
-  timeFieldOptions,
-  isTimeFieldResolved,
+  timeFieldResolution,
   dateRange,
   onDateRangeChange,
   onApply,
@@ -294,8 +293,7 @@ export const QuerySandboxFlyout: React.FC<QuerySandboxFlyoutProps> = ({
           onQueryChange={editingLocked ? undefined : handleQueryChange}
           timeField={timeField}
           onTimeFieldChange={onTimeFieldChange}
-          timeFieldOptions={timeFieldOptions}
-          isTimeFieldResolved={isTimeFieldResolved}
+          timeFieldResolution={timeFieldResolution}
           dateRange={dateRange}
           onDateRangeChange={onDateRangeChange}
           autoRun

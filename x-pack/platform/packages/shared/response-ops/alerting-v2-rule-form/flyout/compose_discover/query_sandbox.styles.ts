@@ -18,6 +18,10 @@ const timeFieldSelectCss = css`
   min-width: 0;
 `;
 
+const toolbarTrailingActionsCss = css`
+  margin-left: auto;
+`;
+
 const loadingCenterCss = css`
   min-height: 200px;
 `;
@@ -80,6 +84,7 @@ export const useQuerySandboxStyles = ({ euiTheme }: UseEuiTheme) => {
     editorBodyCss,
     editorResizeHandleCss,
     timeFieldSelectCss,
+    toolbarTrailingActionsCss,
     loadingCenterCss,
     resultsSectionCss,
   };

@@ -53,8 +53,9 @@ jest.mock('@kbn/esql-utils', () => ({
 
 jest.mock('../../use_resolve_time_field', () => ({
   useResolveTimeField: jest.fn(() => ({
+    status: 'resolved',
     timeFieldOptions: [{ value: '@timestamp', text: '@timestamp' }],
-    isTimeFieldResolved: true,
+    resolvedTimeField: '@timestamp',
   })),
 }));
 
@@ -625,8 +626,9 @@ describe('RuleBuilderAlertConditionStep', () => {
         isLoading: false,
       });
       (useResolveTimeField as jest.Mock).mockReturnValue({
+        status: 'resolved',
         timeFieldOptions: [{ value: '@timestamp', text: '@timestamp' }],
-        isTimeFieldResolved: true,
+        resolvedTimeField: '@timestamp',
       });
     });
 
@@ -767,11 +769,12 @@ describe('RuleBuilderAlertConditionStep', () => {
 
     it('renders time-field options from useResolveTimeField', () => {
       (useResolveTimeField as jest.Mock).mockReturnValue({
+        status: 'resolved',
         timeFieldOptions: [
           { value: 'event_time', text: 'event_time' },
           { value: '@timestamp', text: '@timestamp' },
         ],
-        isTimeFieldResolved: true,
+        resolvedTimeField: 'event_time',
       });
 
       const builderState = makeBuilderState({

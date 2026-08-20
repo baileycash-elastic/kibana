@@ -15,6 +15,7 @@ import { RuleFormProvider, type RuleFormServices } from '../../../form/contexts'
 import { createInitialState } from '../use_compose_discover_state';
 import type { ComposeDiscoverState } from '../types';
 import type { FormValues, RuleQuery } from '../../../form/types';
+import type { TimeFieldResolution } from '../use_resolve_time_field';
 import { AlertConditionStep } from './alert_condition_step';
 import { QueryFieldRules } from './query_field_rules';
 
@@ -23,12 +24,17 @@ jest.mock('@kbn/esql-utils', () => ({
   getEsqlColumns: jest.fn(async () => []),
 }));
 
-jest.mock('../use_compose_discover_time_field', () => ({
-  useComposeDiscoverTimeField: () => ({
-    timeFieldOptions: [{ value: '@timestamp', text: '@timestamp' }],
-    isTimeFieldResolved: true,
-  }),
-}));
+const RESOLVED_TIME_FIELD: TimeFieldResolution = {
+  status: 'resolved',
+  timeFieldOptions: [{ value: '@timestamp', text: '@timestamp' }],
+  resolvedTimeField: '@timestamp',
+};
+
+const PENDING_TIME_FIELD: TimeFieldResolution = {
+  status: 'pending',
+  timeFieldOptions: [],
+  resolvedTimeField: null,
+};
 
 const BASE_QUERY = 'FROM logs-*';
 const ALERT_BLOCK = '| WHERE count > 100';
@@ -89,11 +95,16 @@ const createComposeFormWrapper = (
 interface RenderOptions {
   isEditing?: boolean;
   formValueOverrides?: Partial<FormValues>;
+  timeFieldResolution?: TimeFieldResolution;
 }
 
 const renderStep = (
   stateOverrides: Partial<ComposeDiscoverState> = {},
-  { isEditing = false, formValueOverrides = {} }: RenderOptions = {}
+  {
+    isEditing = false,
+    formValueOverrides = {},
+    timeFieldResolution = RESOLVED_TIME_FIELD,
+  }: RenderOptions = {}
 ) => {
   const state = createState({
     queryCommitted: true,
@@ -109,6 +120,7 @@ const renderStep = (
       dispatch={dispatch}
       services={services}
       isEditing={isEditing}
+      timeFieldResolution={timeFieldResolution}
     />,
     {
       wrapper: createComposeFormWrapper(
@@ -284,6 +296,8 @@ describe('AlertConditionStep', () => {
       renderStep({ queryCommitted: true, childOpen: true });
 
       expect(screen.getByTestId('composeDiscoverTimeField')).toBeDisabled();
+      expect(screen.getByTestId('composeDiscoverTimeField')).toHaveValue('@timestamp');
+      expect(screen.queryByTestId('composeDiscoverTimeFieldError')).not.toBeInTheDocument();
     });
   });
 
@@ -296,14 +310,13 @@ describe('AlertConditionStep', () => {
   });
 
   describe('query-dependent field gating', () => {
-    it('disables time field and group fields when no query is committed', () => {
+    it('disables group fields when no query is committed', () => {
       renderStep({ queryCommitted: false });
 
-      expect(screen.getByTestId('composeDiscoverTimeField')).toBeDisabled();
       expect(screen.getByTestId('comboBoxSearchInput')).toBeDisabled();
     });
 
-    it('disables time field and group fields when the committed query is empty', () => {
+    it('disables group fields when the committed query is empty', () => {
       renderStep(
         { queryCommitted: true },
         {
@@ -314,18 +327,46 @@ describe('AlertConditionStep', () => {
         }
       );
 
-      expect(screen.getByTestId('composeDiscoverTimeField')).toBeDisabled();
       expect(screen.getByTestId('comboBoxSearchInput')).toBeDisabled();
     });
 
-    it('enables time field and group fields once a usable query is committed', () => {
+    it('enables group fields once a usable query is committed', () => {
       renderStep(
         { queryCommitted: true },
         { formValueOverrides: { kind: 'alert', query: COMPOSED_QUERY } }
       );
 
-      expect(screen.getByTestId('composeDiscoverTimeField')).toBeEnabled();
       expect(screen.getByTestId('comboBoxSearchInput')).toBeEnabled();
+    });
+
+    it('disables the time field without flagging it invalid while resolution is pending', () => {
+      renderStep({ queryCommitted: false }, { timeFieldResolution: PENDING_TIME_FIELD });
+
+      expect(screen.getByTestId('composeDiscoverTimeField')).toBeDisabled();
+      expect(screen.queryByTestId('composeDiscoverTimeFieldError')).not.toBeInTheDocument();
+    });
+
+    it('enables the time field once resolution settles', () => {
+      renderStep({ queryCommitted: true }, { timeFieldResolution: RESOLVED_TIME_FIELD });
+
+      expect(screen.getByTestId('composeDiscoverTimeField')).toBeEnabled();
+      expect(screen.queryByTestId('composeDiscoverTimeFieldError')).not.toBeInTheDocument();
+    });
+
+    it('flags the time field invalid when the source has no date field', () => {
+      renderStep(
+        { queryCommitted: true },
+        {
+          timeFieldResolution: {
+            status: 'no_candidates',
+            timeFieldOptions: [],
+            resolvedTimeField: null,
+          },
+        }
+      );
+
+      expect(screen.getByTestId('composeDiscoverTimeField')).toBeEnabled();
+      expect(screen.getByTestId('composeDiscoverTimeFieldError')).toBeInTheDocument();
     });
   });
 

@@ -21,6 +21,7 @@ import { isAlertConditionStepId } from '../types';
 import { getStepIds, getBuilderStepIds } from '../use_compose_discover_state';
 import type { FormValues } from '../../../form/types';
 import type { RuleFormServices } from '../../../form/contexts/rule_form_context';
+import type { TimeFieldResolution } from '../use_resolve_time_field';
 import { RULE_BUILDER_REGISTRY } from '../rule_builder';
 import { ScheduleField } from '../../../form/fields/schedule_field';
 import { LookbackWindowField } from '../../../form/fields/lookback_window_field';
@@ -40,6 +41,7 @@ interface Props {
   onRecoveryTypeChange: (type: RecoveryType) => void;
   onKindChange: (kind: 'signal' | 'alert') => void;
   isEditing: boolean;
+  timeFieldResolution: TimeFieldResolution;
   ruleId?: string;
   builderType?: string;
 }
@@ -56,6 +58,7 @@ const STEP_REGISTRY: Record<StepDefinition['id'], StepDefinition> = {
         dispatch={props.dispatch}
         services={props.services}
         isEditing={props.isEditing}
+        timeFieldResolution={props.timeFieldResolution}
       />
     ),
     fields: ['query'],
@@ -166,6 +169,7 @@ export const ComposeDiscoverForm = ({
   onRecoveryTypeChange,
   onKindChange,
   isEditing,
+  timeFieldResolution,
   ruleId,
   builderType,
 }: Props) => {
@@ -184,6 +188,7 @@ export const ComposeDiscoverForm = ({
     onRecoveryTypeChange,
     onKindChange,
     isEditing,
+    timeFieldResolution,
     ruleId,
     renderCustomRecovery,
   });

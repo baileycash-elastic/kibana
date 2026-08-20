@@ -39,8 +39,8 @@ import {
 } from './compose_discover_tabs';
 import type { QueryTab } from './types';
 import { CpsPicker } from './cps_picker';
-import { useResolveTimeField } from './use_resolve_time_field';
-import { extractFromSourceQuery } from './extract_from_source_query';
+import { getTimeFieldSelectState, useResolveTimeField } from './use_resolve_time_field';
+import type { TimeFieldResolution } from './use_resolve_time_field';
 import { MIN_EDITOR_HEIGHT, MAX_EDITOR_HEIGHT } from './constants';
 import { useQuerySandboxStyles } from './query_sandbox.styles';
 import { useEditorHeightResize } from './use_editor_height_resize';
@@ -78,13 +78,12 @@ export interface QuerySandboxProps {
   autoRun?: boolean;
   /**
    * When provided, time-field resolution is owned by the parent (e.g. compose
-   * flyout) and the sandbox only displays the options without fetching.
-   * Pass `undefined` (not `[]`) to let the sandbox resolve the time field itself —
-   * an empty array skips resolution and renders an empty time-field select.
+   * flyout) and the sandbox only displays it without fetching. Resolution must be
+   * derived from the rule's source query, not the active tab's pipeline, so tabs
+   * that carry no FROM clause (recovery) don't read as unresolved.
+   * Absent → the sandbox resolves the time field itself from `query`.
    */
-  timeFieldOptions?: Array<{ value: string; text: string }>;
-  /** Required with `timeFieldOptions` when the parent gates autoRun on resolution. */
-  isTimeFieldResolved?: boolean;
+  timeFieldResolution?: TimeFieldResolution;
   /**
    * Optional help text rendered above the editor. The caller is responsible for
    * content and styling (e.g. `<EuiText size="s">`). Absent or `undefined` →
@@ -135,8 +134,7 @@ export const QuerySandbox: React.FC<QuerySandboxProps> = ({
   dateRange,
   onDateRangeChange,
   autoRun = false,
-  timeFieldOptions: timeFieldOptionsProp,
-  isTimeFieldResolved: isTimeFieldResolvedProp,
+  timeFieldResolution: timeFieldResolutionProp,
   helpText,
   tabProps,
   headerActions,
@@ -149,6 +147,7 @@ export const QuerySandbox: React.FC<QuerySandboxProps> = ({
     editorBodyCss,
     editorResizeHandleCss,
     timeFieldSelectCss,
+    toolbarTrailingActionsCss,
     loadingCenterCss,
     resultsSectionCss,
   } = useQuerySandboxStyles(euiThemeContext);
@@ -162,7 +161,7 @@ export const QuerySandbox: React.FC<QuerySandboxProps> = ({
   const services = useRuleFormServices();
   const isReadOnly = !onQueryChange;
   const hasTabs = Boolean(tabProps?.tabs?.length);
-  const skipTimeFieldResolution = timeFieldOptionsProp !== undefined;
+  const skipTimeFieldResolution = timeFieldResolutionProp !== undefined;
 
   const handleDateRangeChange = useCallback(
     ({ from, to }: { from: string; to: string }) => {
@@ -190,10 +189,7 @@ export const QuerySandbox: React.FC<QuerySandboxProps> = ({
     [dateRange.dateStart, dateRange.dateEnd]
   );
 
-  const {
-    timeFieldOptions: resolvedTimeFieldOptions,
-    isTimeFieldResolved: resolvedIsTimeFieldResolved,
-  } = useResolveTimeField({
+  const ownTimeFieldResolution = useResolveTimeField({
     query,
     timeField,
     onTimeFieldChange,
@@ -203,22 +199,16 @@ export const QuerySandbox: React.FC<QuerySandboxProps> = ({
     search: services.data.search.search,
   });
 
-  const timeFieldOptions = timeFieldOptionsProp ?? resolvedTimeFieldOptions;
-  const isTimeFieldResolved = isTimeFieldResolvedProp ?? resolvedIsTimeFieldResolved;
+  const timeFieldResolution = timeFieldResolutionProp ?? ownTimeFieldResolution;
 
-  // Time-field select display state. When the current field isn't on the index
-  // (no date fields, or a stored `@timestamp` on an index that only has
-  // `timestamp`), show a blank selection + invalid state so the user picks one,
-  // rather than fabricating `@timestamp`. Only flag invalid once a source query
-  // is present.
-  const hasSourceQuery = useMemo(() => Boolean(extractFromSourceQuery(query)), [query]);
-  const currentTimeFieldIsOption = useMemo(
-    () => timeFieldOptions.some((option) => option.value === timeField),
-    [timeFieldOptions, timeField]
+  // When the current field isn't on the index (no date fields, or a stored
+  // `@timestamp` on an index that only has `timestamp`), the shared mapping shows a
+  // blank selection + invalid state so the user picks one rather than fabricating
+  // `@timestamp`.
+  const timeFieldSelect = useMemo(
+    () => getTimeFieldSelectState(timeFieldResolution, timeField),
+    [timeFieldResolution, timeField]
   );
-  const timeFieldDisabled = !onTimeFieldChange || !hasSourceQuery || timeFieldOptions.length === 0;
-  const timeFieldInvalid =
-    hasSourceQuery && timeFieldOptions.length > 0 && !currentTimeFieldIsOption;
 
   const {
     columns,
@@ -241,12 +231,12 @@ export const QuerySandbox: React.FC<QuerySandboxProps> = ({
   const hasAutoRunRef = useRef(false);
 
   useEffect(() => {
-    if (!autoRun || hasAutoRunRef.current || !isTimeFieldResolved) {
+    if (!autoRun || hasAutoRunRef.current || !timeFieldSelect.isExecutable) {
       return;
     }
     hasAutoRunRef.current = true;
     run();
-  }, [autoRun, isTimeFieldResolved, run]);
+  }, [autoRun, timeFieldSelect.isExecutable, run]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -396,16 +386,16 @@ export const QuerySandbox: React.FC<QuerySandboxProps> = ({
           </EuiFlexItem>
           <EuiFlexItem grow={false} css={timeFieldSelectCss}>
             <EuiSelect
-              options={timeFieldOptions}
-              value={hasSourceQuery && currentTimeFieldIsOption ? timeField : ''}
-              hasNoInitialSelection={!hasSourceQuery || !currentTimeFieldIsOption}
-              isInvalid={timeFieldInvalid}
+              options={timeFieldSelect.options}
+              value={timeFieldSelect.value}
+              hasNoInitialSelection={timeFieldSelect.hasNoInitialSelection}
+              isInvalid={timeFieldSelect.isInvalid}
               aria-label={i18n.translate(
                 'xpack.alertingV2.composeDiscover.querySandbox.timeFieldAriaLabel',
                 { defaultMessage: 'Time field for rule execution' }
               )}
               onChange={(e) => onTimeFieldChange?.(e.target.value)}
-              disabled={timeFieldDisabled}
+              disabled={!onTimeFieldChange || timeFieldSelect.isDisabled}
               compressed
               prepend={i18n.translate(
                 'xpack.alertingV2.composeDiscover.querySandbox.timeFieldPrependLabel',
@@ -415,7 +405,7 @@ export const QuerySandbox: React.FC<QuerySandboxProps> = ({
             />
           </EuiFlexItem>
           {headerActions && (
-            <EuiFlexItem grow={false} css={{ marginLeft: 'auto' }}>
+            <EuiFlexItem grow={false} css={toolbarTrailingActionsCss}>
               {headerActions}
             </EuiFlexItem>
           )}

@@ -17,7 +17,8 @@ import type { ComposeDiscoverAction, ComposeDiscoverState } from '../types';
 import type { FormValues } from '../../../form/types';
 import { EsqlQuerySummarySection, getEsqlSummaryState } from './esql_query_summary_section';
 import type { RuleFormServices } from '../../../form/contexts/rule_form_context';
-import { useComposeDiscoverTimeField } from '../use_compose_discover_time_field';
+import { getTimeFieldSelectState } from '../use_resolve_time_field';
+import type { TimeFieldResolution } from '../use_resolve_time_field';
 import { getTimeFieldResolutionQuery } from '../get_time_field_resolution_query';
 
 interface AlertConditionStepProps {
@@ -25,6 +26,7 @@ interface AlertConditionStepProps {
   dispatch: React.Dispatch<ComposeDiscoverAction>;
   services: RuleFormServices;
   isEditing: boolean;
+  timeFieldResolution: TimeFieldResolution;
 }
 
 export function AlertConditionStep({
@@ -32,6 +34,7 @@ export function AlertConditionStep({
   dispatch,
   services,
   isEditing,
+  timeFieldResolution,
 }: AlertConditionStepProps) {
   const { setValue, watch } = useFormContext<FormValues>();
   // Rules are registered by always-mounted QueryFieldRules in ComposeDiscoverForm.
@@ -50,18 +53,11 @@ export function AlertConditionStep({
     [query, isAlert, state.queryCommitted]
   );
 
-  const { timeFieldOptions, isTimeFieldResolved } = useComposeDiscoverTimeField();
+  const timeFieldSelect = getTimeFieldSelectState(timeFieldResolution, timeField);
 
-  // Time field and grouping depend on a resolved query. Disable them until a
-  // non-empty query is committed (no committed query, or committed-but-empty).
   const summaryState = getEsqlSummaryState(state.queryCommitted, query);
   const hasUsableQuery = summaryState !== 'before_apply' && summaryState !== 'empty';
-  const queryDependentFieldsDisabled = state.childOpen || !hasUsableQuery;
-
-  // When the current field isn't on the index (no date fields, or a stored
-  // `@timestamp` that doesn't exist), show a blank selection + invalid state so
-  // the user picks one, rather than fabricating `@timestamp`.
-  const currentTimeFieldIsOption = timeFieldOptions.some((option) => option.value === timeField);
+  const groupFieldsDisabled = state.childOpen || !hasUsableQuery;
 
   /*
    * Output columns of the full pipeline -> options for the group fields selector.
@@ -151,9 +147,9 @@ export function AlertConditionStep({
           defaultMessage: 'Time field',
         })}
         fullWidth
-        isInvalid={!isTimeFieldResolved}
+        isInvalid={timeFieldSelect.isInvalid}
         error={
-          !isTimeFieldResolved ? (
+          timeFieldSelect.isInvalid ? (
             <span data-test-subj="composeDiscoverTimeFieldError">
               {i18n.translate('xpack.alertingV2.composeDiscover.alertCondition.timeFieldError', {
                 defaultMessage:
@@ -166,12 +162,12 @@ export function AlertConditionStep({
         <EuiSelect
           compressed
           fullWidth
-          options={timeFieldOptions}
-          value={currentTimeFieldIsOption ? timeField : ''}
-          hasNoInitialSelection={!currentTimeFieldIsOption}
-          isInvalid={!isTimeFieldResolved}
+          options={timeFieldSelect.options}
+          value={timeFieldSelect.value}
+          hasNoInitialSelection={timeFieldSelect.hasNoInitialSelection}
+          isInvalid={timeFieldSelect.isInvalid}
           onChange={(e) => setValue('timeField', e.target.value, { shouldDirty: true })}
-          disabled={queryDependentFieldsDisabled}
+          disabled={state.childOpen || timeFieldSelect.isDisabled}
           data-test-subj="composeDiscoverTimeField"
         />
       </EuiFormRow>
@@ -185,7 +181,7 @@ export function AlertConditionStep({
         <EuiComboBox
           compressed
           fullWidth
-          isDisabled={queryDependentFieldsDisabled}
+          isDisabled={groupFieldsDisabled}
           options={outputColumns.map((name) => ({ label: name }))}
           selectedOptions={groupFields.map((f) => ({ label: f }))}
           onChange={(opts) =>
