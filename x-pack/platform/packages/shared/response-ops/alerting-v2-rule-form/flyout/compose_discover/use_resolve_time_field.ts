@@ -67,7 +67,6 @@ export interface TimeFieldSelectState {
   isExecutable: boolean;
 }
 
-/** Maps a resolution to time-field select props. */
 export const getTimeFieldSelectState = (
   { status, timeFieldOptions }: TimeFieldResolution,
   timeField: string

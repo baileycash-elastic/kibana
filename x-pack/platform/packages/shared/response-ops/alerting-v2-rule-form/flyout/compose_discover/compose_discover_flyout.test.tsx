@@ -143,6 +143,33 @@ let readTimeField: (() => FormValues['timeField']) | undefined;
 let autoCorrectCommittedTimeField: ((timeField: string) => void) | undefined;
 let autoCorrectSandboxTimeField: ((timeField: string) => void) | undefined;
 
+const RESOLVED_TIME_FIELD_RESOLUTION: TimeFieldResolution = {
+  status: 'resolved',
+  timeFieldOptions: [
+    { value: '@timestamp', text: '@timestamp' },
+    { value: 'event.ingested', text: 'event.ingested' },
+  ],
+  resolvedTimeField: '@timestamp',
+};
+
+const PENDING_TIME_FIELD_RESOLUTION: TimeFieldResolution = {
+  status: 'pending',
+  timeFieldOptions: [],
+  resolvedTimeField: null,
+};
+
+const captureTimeFieldAutoCorrect = (params: {
+  onTimeFieldChange?: (timeField: string) => void;
+  enabled?: boolean;
+}) => {
+  // Sandbox resolution always passes `enabled`; committed resolution never does.
+  if (Object.prototype.hasOwnProperty.call(params, 'enabled')) {
+    autoCorrectSandboxTimeField = params.onTimeFieldChange;
+  } else {
+    autoCorrectCommittedTimeField = params.onTimeFieldChange;
+  }
+};
+
 jest.mock('./query_sandbox_flyout', () => ({
   QuerySandboxFlyout: (props: SandboxFlyoutMockProps) => {
     sandboxFlyoutProps = props;
@@ -191,24 +218,10 @@ jest.mock('./use_split_query_completion', () => ({
 
 jest.mock('./use_resolve_time_field', () => ({
   ...jest.requireActual('./use_resolve_time_field'),
-  useResolveTimeField: jest.fn(
-    (params: { onTimeFieldChange?: (timeField: string) => void; enabled?: boolean }) => {
-      // Sandbox resolution always passes `enabled`; committed resolution never does.
-      if (Object.prototype.hasOwnProperty.call(params, 'enabled')) {
-        autoCorrectSandboxTimeField = params.onTimeFieldChange;
-      } else {
-        autoCorrectCommittedTimeField = params.onTimeFieldChange;
-      }
-      return {
-        status: 'resolved',
-        timeFieldOptions: [
-          { value: '@timestamp', text: '@timestamp' },
-          { value: 'event.ingested', text: 'event.ingested' },
-        ],
-        resolvedTimeField: '@timestamp',
-      };
-    }
-  ),
+  useResolveTimeField: jest.fn((params: { onTimeFieldChange?: (timeField: string) => void }) => {
+    captureTimeFieldAutoCorrect(params);
+    return RESOLVED_TIME_FIELD_RESOLUTION;
+  }),
 }));
 
 jest.mock('../../form/hooks/use_data_fields', () => ({
@@ -1325,30 +1338,38 @@ describe('ComposeDiscoverFlyout', () => {
       const { useResolveTimeField } = jest.requireMock('./use_resolve_time_field') as {
         useResolveTimeField: jest.Mock;
       };
-      useResolveTimeField.mockClear();
+      useResolveTimeField.mockImplementation(
+        (params: { query: string; onTimeFieldChange?: (timeField: string) => void }) => {
+          captureTimeFieldAutoCorrect(params);
+          return params.query.includes('kibana_sample_data_ecommerce')
+            ? RESOLVED_TIME_FIELD_RESOLUTION
+            : PENDING_TIME_FIELD_RESOLUTION;
+        }
+      );
 
-      renderFlyout({ mode: 'create' });
-      openSandbox();
+      try {
+        renderFlyout({ mode: 'create' });
+        openSandbox();
 
-      act(() => {
-        sandboxFlyoutProps?.onQueryChange?.({
-          format: 'composed',
-          base: 'FROM kibana_sample_data_ecommerce',
-          breach: { segment: '' },
+        act(() => {
+          sandboxFlyoutProps?.onQueryChange?.({
+            format: 'composed',
+            base: 'FROM kibana_sample_data_ecommerce',
+            breach: { segment: '' },
+          });
         });
-      });
 
-      const enabledCalls = useResolveTimeField.mock.calls
-        .map(([params]) => params)
-        .filter((params: { enabled?: boolean }) => params.enabled !== false);
-
-      expect(enabledCalls.some((params: { query: string }) => params.query === '')).toBe(true);
-      expect(
-        enabledCalls.some((params: { query: string }) =>
-          params.query.includes('kibana_sample_data_ecommerce')
-        )
-      ).toBe(true);
-      expect(readTimeField?.()).toBe('@timestamp');
+        expect(getLatestFormProps().timeFieldResolution.status).toBe('pending');
+        expect(sandboxFlyoutProps?.timeFieldResolution?.status).toBe('resolved');
+        expect(readTimeField?.()).toBe('@timestamp');
+      } finally {
+        useResolveTimeField.mockImplementation(
+          (params: { onTimeFieldChange?: (timeField: string) => void }) => {
+            captureTimeFieldAutoCorrect(params);
+            return RESOLVED_TIME_FIELD_RESOLUTION;
+          }
+        );
+      }
     });
 
     it('syncs a form-step time field change into the draft while the sandbox is closed', () => {

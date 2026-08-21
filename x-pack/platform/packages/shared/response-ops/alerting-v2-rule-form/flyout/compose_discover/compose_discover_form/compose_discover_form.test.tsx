@@ -287,7 +287,7 @@ describe('step validation', () => {
     });
 
     it('delegates to methods.trigger with notifications', async () => {
-      const state = createState({ mode: 'create' });
+      const state = createState();
       const methods = {
         trigger: jest.fn().mockResolvedValue(true),
       } as unknown as UseFormReturn<FormValues>;
@@ -299,7 +299,7 @@ describe('step validation', () => {
     });
 
     it('returns false when trigger rejects notifications validation', async () => {
-      const state = createState({ mode: 'create' });
+      const state = createState();
       const methods = {
         trigger: jest.fn().mockResolvedValue(false),
       } as unknown as UseFormReturn<FormValues>;
