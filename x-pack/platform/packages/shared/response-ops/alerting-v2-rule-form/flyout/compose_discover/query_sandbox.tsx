@@ -201,10 +201,6 @@ export const QuerySandbox: React.FC<QuerySandboxProps> = ({
 
   const timeFieldResolution = timeFieldResolutionProp ?? ownTimeFieldResolution;
 
-  // When the current field isn't on the index (no date fields, or a stored
-  // `@timestamp` on an index that only has `timestamp`), the shared mapping shows a
-  // blank selection + invalid state so the user picks one rather than fabricating
-  // `@timestamp`.
   const timeFieldSelect = useMemo(
     () => getTimeFieldSelectState(timeFieldResolution, timeField),
     [timeFieldResolution, timeField]
