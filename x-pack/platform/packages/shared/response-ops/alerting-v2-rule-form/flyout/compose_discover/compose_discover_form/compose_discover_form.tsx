@@ -31,6 +31,7 @@ import { NotificationsStep } from './notifications_step';
 import { LinkedActionPoliciesStep } from './linked_action_policies_step';
 import { CentralizedActionPoliciesPanel } from './centralized_action_policies_panel';
 import { QueryFieldRules } from './query_field_rules';
+import { RecoveryFieldRules } from './recovery_field_rules';
 
 interface Props {
   state: ComposeDiscoverState;
@@ -82,6 +83,7 @@ const STEP_REGISTRY: Record<StepDefinition['id'], StepDefinition> = {
         renderCustomRecovery={props.renderCustomRecovery}
       />
     ),
+    fields: ['recoveryStrategy'],
   },
   details: {
     id: 'details',
@@ -191,6 +193,7 @@ export const ComposeDiscoverForm = ({
     <>
       {/* Keep query rules mounted across steps so trigger(['query']) cannot no-op. */}
       {!builderType && <QueryFieldRules queryCommitted={state.queryCommitted} />}
+      <RecoveryFieldRules />
       {!isAlertConditionStep ? (
         stepContent
       ) : (

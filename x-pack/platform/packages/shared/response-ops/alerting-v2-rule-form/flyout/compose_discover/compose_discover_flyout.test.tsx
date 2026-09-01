@@ -70,7 +70,7 @@ const mockComposeDiscoverForm = jest.fn((_props: FormProps) => (
 ));
 
 jest.mock('./compose_discover_form', () => {
-  const { useFormContext } = jest.requireActual(
+  const { useFormContext, useFormState } = jest.requireActual(
     'react-hook-form'
   ) as typeof import('react-hook-form');
   const { getSteps } = jest.requireActual(
@@ -79,18 +79,24 @@ jest.mock('./compose_discover_form', () => {
   const { QueryFieldRules } = jest.requireActual(
     './compose_discover_form/query_field_rules'
   ) as typeof import('./compose_discover_form/query_field_rules');
+  const { RecoveryFieldRules } = jest.requireActual(
+    './compose_discover_form/recovery_field_rules'
+  ) as typeof import('./compose_discover_form/recovery_field_rules');
   return {
     getSteps,
     ComposeDiscoverForm: (props: FormProps) => {
       mockComposeDiscoverForm(props);
       const { setValue, getValues } = useFormContext<FormValues>();
+      const { errors } = useFormState<FormValues>({ name: 'recoveryStrategy' });
       readCommittedQuery = () => getValues('query');
       readRecoveryStrategy = () => getValues('recoveryStrategy');
+      readRecoveryStrategyError = () => errors.recoveryStrategy?.message as string | undefined;
       readTimeField = () => getValues('timeField');
       return (
         <div data-test-subj="composeDiscoverFormMock">
-          {/* Keep query rules mounted so validateStep → trigger(['query']) can fail. */}
+          {/* Keep field rules mounted so validateStep → trigger([...]) can fail. */}
           <QueryFieldRules queryCommitted={props.state.queryCommitted} />
+          <RecoveryFieldRules />
           <button
             data-test-subj="mockMakeDirty"
             onClick={() => setValue('metadata.name', 'changed', { shouldDirty: true })}
@@ -144,6 +150,7 @@ let yamlRuleFormProps:
   | undefined;
 let readCommittedQuery: (() => RuleQuery) | undefined;
 let readRecoveryStrategy: (() => FormValues['recoveryStrategy']) | undefined;
+let readRecoveryStrategyError: (() => string | undefined) | undefined;
 let readTimeField: (() => FormValues['timeField']) | undefined;
 
 jest.mock('./query_sandbox_flyout', () => ({
@@ -344,6 +351,7 @@ describe('ComposeDiscoverFlyout', () => {
     yamlRuleFormProps = undefined;
     readCommittedQuery = undefined;
     readRecoveryStrategy = undefined;
+    readRecoveryStrategyError = undefined;
     readTimeField = undefined;
     mockParseYamlToFormValues = (yaml) => ({
       values: yaml ? defaultYamlFormValues : null,
@@ -1752,6 +1760,152 @@ describe('ComposeDiscoverFlyout', () => {
 
       expect(readRecoveryStrategy?.()).toBe('query');
       expect(sandboxFlyoutProps?.tabs).toEqual(['recovery']);
+    });
+
+    it('blocks Next on the outcome step while custom recovery has no recovery query', async () => {
+      renderFlyout({ mode: 'edit', rule: ruleWithRecoveryStrategy as any });
+
+      await clickComposeDiscoverNext();
+      expect(getLatestFormProps().state.step).toBe(1);
+
+      act(() => {
+        getLatestFormProps().onRecoveryTypeChange('query');
+      });
+      // Close the sandbox so Next is gated by validation rather than by childOpen.
+      act(() => {
+        fireEvent.click(screen.getByTestId('composeDiscoverChildMockClose'));
+      });
+
+      await clickComposeDiscoverNext();
+
+      expect(getLatestFormProps().state.step).toBe(1);
+      expect(readRecoveryStrategyError?.()).toEqual(expect.stringContaining('recovery query'));
+    });
+
+    it('does not report a missing recovery query until the user tries to advance', async () => {
+      renderFlyout({ mode: 'edit', rule: ruleWithRecoveryStrategy as any });
+
+      await clickComposeDiscoverNext();
+
+      await act(async () => {
+        getLatestFormProps().onRecoveryTypeChange('query');
+      });
+
+      expect(readRecoveryStrategyError?.()).toBeUndefined();
+    });
+
+    it('clears the missing recovery query error when switching away from custom recovery', async () => {
+      renderFlyout({ mode: 'edit', rule: ruleWithRecoveryStrategy as any });
+
+      await clickComposeDiscoverNext();
+
+      act(() => {
+        getLatestFormProps().onRecoveryTypeChange('query');
+      });
+      act(() => {
+        fireEvent.click(screen.getByTestId('composeDiscoverChildMockClose'));
+      });
+      await clickComposeDiscoverNext();
+      expect(readRecoveryStrategyError?.()).toEqual(expect.stringContaining('recovery query'));
+
+      await act(async () => {
+        getLatestFormProps().onRecoveryTypeChange('no_breach');
+      });
+
+      expect(readRecoveryStrategyError?.()).toBeUndefined();
+    });
+
+    it('reports the missing recovery query on Apply without blocking the apply', async () => {
+      renderFlyout({ mode: 'edit', rule: ruleWithRecoveryStrategy as any });
+
+      await clickComposeDiscoverNext();
+
+      act(() => {
+        getLatestFormProps().onRecoveryTypeChange('query');
+      });
+      const withoutRecovery: RuleQuery = {
+        format: 'composed',
+        base: 'FROM logs-*',
+        breach: { segment: 'WHERE count > 100' },
+      };
+      act(() => {
+        sandboxFlyoutProps?.onQueryChange?.(withoutRecovery);
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('mockSandboxApply'));
+      });
+
+      // The query still commits — Apply is reported on, not gated.
+      expect(readCommittedQuery?.()).toEqual(withoutRecovery);
+      expect(readRecoveryStrategyError?.()).toEqual(expect.stringContaining('recovery query'));
+    });
+
+    it('clears the missing recovery query error once a recovery query is applied', async () => {
+      renderFlyout({ mode: 'edit', rule: ruleWithRecoveryStrategy as any });
+
+      await clickComposeDiscoverNext();
+
+      act(() => {
+        getLatestFormProps().onRecoveryTypeChange('query');
+      });
+      act(() => {
+        sandboxFlyoutProps?.onQueryChange?.({
+          format: 'composed',
+          base: 'FROM logs-*',
+          breach: { segment: 'WHERE count > 100' },
+        });
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('mockSandboxApply'));
+      });
+      expect(readRecoveryStrategyError?.()).toEqual(expect.stringContaining('recovery query'));
+
+      act(() => {
+        getLatestFormProps().dispatch({
+          type: 'OPEN_CHILD_FOR_STEP',
+          step: 1,
+          isAlert: true,
+          hasCustomRecovery: true,
+        });
+      });
+      act(() => {
+        sandboxFlyoutProps?.onQueryChange?.({
+          format: 'composed',
+          base: 'FROM logs-*',
+          breach: { segment: 'WHERE count > 100' },
+          recovery: { segment: 'WHERE count < 50' },
+        });
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('mockSandboxApply'));
+      });
+
+      expect(readRecoveryStrategyError?.()).toBeUndefined();
+    });
+
+    it('allows Next on the outcome step once a recovery query is applied', async () => {
+      renderFlyout({ mode: 'edit', rule: ruleWithRecoveryStrategy as any });
+
+      await clickComposeDiscoverNext();
+
+      act(() => {
+        getLatestFormProps().onRecoveryTypeChange('query');
+      });
+      act(() => {
+        sandboxFlyoutProps?.onQueryChange?.({
+          format: 'composed',
+          base: 'FROM logs-*',
+          breach: { segment: 'WHERE count > 100' },
+          recovery: { segment: 'WHERE count < 50' },
+        });
+      });
+      act(() => {
+        fireEvent.click(screen.getByTestId('mockSandboxApply'));
+      });
+
+      await clickComposeDiscoverNext();
+
+      expect(getLatestFormProps().state.step).toBe(2);
     });
 
     it('clears recoveryStrategy when kind changes to signal, so it is never sent for signal rules', () => {

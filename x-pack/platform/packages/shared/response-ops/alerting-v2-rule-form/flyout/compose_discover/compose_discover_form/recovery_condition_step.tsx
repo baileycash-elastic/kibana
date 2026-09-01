@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { useWatch } from 'react-hook-form';
+import { useFormState, useWatch } from 'react-hook-form';
 import { EuiFormRow, EuiHorizontalRule, EuiSpacer, EuiSuperSelect, EuiText } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import type {
@@ -95,23 +95,30 @@ const RECOVERY_TYPE_OPTIONS: Array<{
 interface RecoveryTypeSelectorProps {
   recoveryStrategy: RecoveryStrategy;
   onRecoveryTypeChange: (strategy: RecoveryStrategy) => void;
+  error?: string;
 }
 
 const RecoveryTypeSelector: React.FC<RecoveryTypeSelectorProps> = ({
   recoveryStrategy,
   onRecoveryTypeChange,
+  error,
 }) => (
   <EuiFormRow
     label={i18n.translate('xpack.alertingV2.composeDiscover.recoveryCondition.recoveryTypeLabel', {
       defaultMessage: 'Recovery',
     })}
     fullWidth
+    isInvalid={Boolean(error)}
+    error={
+      error ? <span data-test-subj="composeDiscoverRecoveryTypeError">{error}</span> : undefined
+    }
   >
     <EuiSuperSelect
       compressed
       options={RECOVERY_TYPE_OPTIONS}
       valueOfSelected={recoveryStrategy}
       onChange={(val) => onRecoveryTypeChange(val as RecoveryStrategy)}
+      isInvalid={Boolean(error)}
       fullWidth
       data-test-subj="composeDiscoverRecoveryType"
     />
@@ -133,6 +140,7 @@ export function RecoveryConditionStep({
 }: RecoveryConditionStepProps) {
   const recoveryStrategy =
     useWatch<FormValues, 'recoveryStrategy'>({ name: 'recoveryStrategy' }) ?? 'none';
+  const { errors } = useFormState<FormValues>({ name: 'recoveryStrategy' });
   const isCustom = recoveryStrategy === 'query';
 
   return (
@@ -140,6 +148,7 @@ export function RecoveryConditionStep({
       <RecoveryTypeSelector
         recoveryStrategy={recoveryStrategy}
         onRecoveryTypeChange={onRecoveryTypeChange}
+        error={errors.recoveryStrategy?.message}
       />
 
       {isCustom && renderCustomRecovery && (

@@ -72,6 +72,7 @@ describe('composeFormToCreateRequest', () => {
   it('includes recovery with recovery_strategy: query when form has recovery segment', () => {
     const values: FormValues = {
       ...baseFormValues,
+      recoveryStrategy: 'query',
       query: {
         format: 'composed',
         base: BASE,
@@ -98,6 +99,7 @@ describe('composeFormToCreateRequest', () => {
   it('maps standalone form values to standalone request', () => {
     const values: FormValues = {
       ...baseFormValues,
+      recoveryStrategy: 'query',
       query: {
         format: 'standalone',
         breach: { query: 'FROM logs-* | WHERE count > 100' },
@@ -327,9 +329,10 @@ describe('composeFormToUpdateRequest', () => {
     expect(result.recovery_strategy).toBeNull();
   });
 
-  it('infers recovery_strategy: query when user adds recovery via form (recoveryStrategy undefined)', () => {
+  it('sends recovery_strategy: query when the user adds recovery via the form', () => {
     const values: FormValues = {
       ...baseFormValues,
+      recoveryStrategy: 'query',
       query: {
         format: 'composed',
         base: BASE,
@@ -341,10 +344,10 @@ describe('composeFormToUpdateRequest', () => {
     expect(result.recovery_strategy).toBe('query');
   });
 
-  it('nullifies recovery_strategy when user removes recovery from a loaded rule', () => {
+  it('nullifies recovery_strategy when the user switches away from custom recovery', () => {
     const values: FormValues = {
       ...baseFormValues,
-      recoveryStrategy: 'query',
+      recoveryStrategy: undefined,
     };
     const result = composeFormToUpdateRequest(values);
     expect(result.recovery_strategy).toBeNull();

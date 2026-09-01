@@ -33,22 +33,13 @@ import {
 
 /**
  * Resolves the recovery_strategy for an API request.
- * Non-query strategies (no_breach, none) are preserved as-is.
- * 'query' is always derived from the recovery block presence — never
- * kept as a stale value — because the form can add/remove recovery
- * without updating the recoveryStrategy field.
  * Signal rules never carry a recovery_strategy, regardless of what's
  * left over in the field from a previous alert/signal toggle.
  */
 export const resolveRecoveryStrategy = (
-  formValues: Pick<FormValues, 'kind' | 'recoveryStrategy' | 'query'>
-): RecoveryStrategy | undefined => {
-  if (formValues.kind !== 'alert') return undefined;
-  if (formValues.recoveryStrategy && formValues.recoveryStrategy !== 'query') {
-    return formValues.recoveryStrategy;
-  }
-  return formValues.query.recovery != null ? ('query' as const) : undefined;
-};
+  formValues: Pick<FormValues, 'kind' | 'recoveryStrategy'>
+): RecoveryStrategy | undefined =>
+  formValues.kind === 'alert' ? formValues.recoveryStrategy : undefined;
 
 // ---------------------------------------------------------------------------
 // FormValues → API request

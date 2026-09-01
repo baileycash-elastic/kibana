@@ -72,6 +72,7 @@ describe('yaml_form_utils', () => {
     it('converts composed FormValues to YAML-compatible object', () => {
       const formValues: FormValues = {
         ...defaultTestFormValues,
+        recoveryStrategy: 'query',
         query: {
           format: 'composed',
           base: 'FROM logs-* | STATS c = COUNT(*) BY host.name',
@@ -180,6 +181,7 @@ describe('yaml_form_utils', () => {
     it('sets recovery_strategy when standalone query has recovery', () => {
       const formValues: FormValues = {
         ...defaultTestFormValues,
+        recoveryStrategy: 'query',
         query: {
           format: 'standalone',
           breach: { query: 'FROM logs-*' },

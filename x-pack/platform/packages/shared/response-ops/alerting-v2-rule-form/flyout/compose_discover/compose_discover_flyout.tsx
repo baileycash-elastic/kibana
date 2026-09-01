@@ -679,7 +679,11 @@ export function ComposeDiscoverFlyout({
 
   const handleRecoveryTypeChange = useCallback(
     (strategy: RecoveryStrategy) => {
-      methods.setValue('recoveryStrategy', strategy, { shouldDirty: true });
+      // No recovery query exists yet at selection; other strategies pass, clearing stale errors.
+      methods.setValue('recoveryStrategy', strategy, {
+        shouldDirty: true,
+        shouldValidate: strategy !== 'query',
+      });
       if (strategy === 'query') {
         setSandboxQuery((q) => {
           if (q.format !== 'composed') return q;
@@ -901,6 +905,8 @@ export function ComposeDiscoverFlyout({
     dispatch({ type: 'COMMIT_QUERY' });
     manualSplitUncommittedRef.current = false;
     if (!uiState.yamlMode) {
+      // Apply commits the recovery query; YAML mode reports the same gap via editor markers.
+      void methods.trigger('recoveryStrategy');
       dispatch({ type: 'CLOSE_CHILD' });
     }
   }, [

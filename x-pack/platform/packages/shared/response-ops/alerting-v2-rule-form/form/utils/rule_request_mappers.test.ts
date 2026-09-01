@@ -369,6 +369,7 @@ describe('rule_request_mappers', () => {
       const formValues: FormValues = {
         ...baseFormValues,
         kind: 'alert',
+        recoveryStrategy: 'query',
         query: {
           format: 'standalone',
           breach: { query: 'FROM logs-* | LIMIT 10' },
@@ -710,10 +711,11 @@ describe('rule_request_mappers', () => {
       expect(result.no_data_strategy).toBe('recover');
     });
 
-    it('infers recovery_strategy: query when user adds recovery via form (recoveryStrategy undefined)', () => {
+    it('sends recovery_strategy: query when the user adds recovery via the form', () => {
       const formValues: FormValues = {
         ...baseFormValues,
         kind: 'alert',
+        recoveryStrategy: 'query',
         query: {
           format: 'composed',
           base: 'FROM logs-*',
