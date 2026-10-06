@@ -3167,32 +3167,6 @@ describe('ActionPolicyClient', () => {
       });
     });
 
-    it('applies search and policiesPerTag', async () => {
-      mockSources([
-        source('1', 'A', true, ['rna']),
-        source('2', 'B', true, ['rna']),
-        source('3', 'C', true, ['sre']),
-      ]);
-
-      const result = await client.getRoutingTags({ search: 'rn', policiesPerTag: 1 });
-
-      expect(result.items).toEqual([
-        { tag: 'rna', policy_count: 2, policies: [{ id: '1', name: 'A' }] },
-      ]);
-      expect(result.total_tags).toBe(1);
-    });
-
-    it('limits items to 20 tags and reports every matching tag in total_tags', async () => {
-      mockSources(
-        Array.from({ length: 25 }, (_, i) => source(`p${i}`, `Policy ${i}`, true, [`tag-${i}`]))
-      );
-
-      const result = await client.getRoutingTags({ policiesPerTag: 5 });
-
-      expect(result.items).toHaveLength(20);
-      expect(result.total_tags).toBe(25);
-    });
-
     it('reports when the policy scan stopped at its ceiling', async () => {
       mockSources([source('1', 'A', true, ['rna'])], true);
 

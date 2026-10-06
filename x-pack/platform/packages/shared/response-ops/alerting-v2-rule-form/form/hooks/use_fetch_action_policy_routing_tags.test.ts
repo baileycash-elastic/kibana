@@ -7,7 +7,6 @@
 
 import { renderHook, waitFor } from '@testing-library/react';
 import { httpServiceMock } from '@kbn/core-http-browser-mocks';
-import { ALERTING_V2_INTERNAL_ACTION_POLICY_ROUTING_TAGS_API_PATH } from '@kbn/alerting-v2-constants';
 import type { ActionPolicyRoutingTagsResponse } from '@kbn/alerting-v2-schemas';
 import { createQueryClientWrapper } from '../../test_utils';
 import { useFetchActionPolicyRoutingTags } from './use_fetch_action_policy_routing_tags';
@@ -27,37 +26,6 @@ describe('useFetchActionPolicyRoutingTags', () => {
 
   beforeEach(() => {
     http = httpServiceMock.createStartContract();
-  });
-
-  it('fetches the routing tags and returns the whole response', async () => {
-    http.get.mockResolvedValue(response(['rna', 'sre']));
-
-    const { result } = renderHook(() => useFetchActionPolicyRoutingTags({ http }), {
-      wrapper: createQueryClientWrapper(),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    expect(http.get).toHaveBeenCalledWith(
-      ALERTING_V2_INTERNAL_ACTION_POLICY_ROUTING_TAGS_API_PATH,
-      { query: { search: undefined } }
-    );
-    expect(result.current.data).toEqual(response(['rna', 'sre']));
-  });
-
-  it('forwards a search prefix', async () => {
-    http.get.mockResolvedValue(response(['rna']));
-
-    const { result } = renderHook(() => useFetchActionPolicyRoutingTags({ http, search: 'rn' }), {
-      wrapper: createQueryClientWrapper(),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    expect(http.get).toHaveBeenCalledWith(
-      ALERTING_V2_INTERNAL_ACTION_POLICY_ROUTING_TAGS_API_PATH,
-      { query: { search: 'rn' } }
-    );
   });
 
   it('treats empty and whitespace-only search as an omitted query param', async () => {

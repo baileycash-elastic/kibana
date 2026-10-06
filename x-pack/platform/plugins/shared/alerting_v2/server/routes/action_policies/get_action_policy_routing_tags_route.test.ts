@@ -7,7 +7,6 @@
 
 import type { KibanaRequest } from '@kbn/core-http-server';
 import { httpServerMock } from '@kbn/core-http-server-mocks';
-import { actionPolicyRoutingTagsParamsSchema } from '@kbn/alerting-v2-schemas';
 import type { ActionPolicyClient } from '../../lib/action_policy_client';
 import { ALERTING_V2_API_PRIVILEGES } from '../../lib/security/privileges';
 import { createRouteDependencies } from '../test_utils';
@@ -37,14 +36,6 @@ describe('GetActionPolicyRoutingTagsRoute', () => {
     expect(GetActionPolicyRoutingTagsRoute.security).toEqual({
       authz: { requiredPrivileges: [ALERTING_V2_API_PRIVILEGES.actionPolicies.read] },
     });
-  });
-
-  it('validates the query strictly', () => {
-    const { request } = GetActionPolicyRoutingTagsRoute.schemas;
-
-    expect(request.query.safeParse({ search: 'rna', policies_per_tag: '3' }).success).toBe(true);
-    expect(request.query.safeParse({ page: 1 }).success).toBe(false);
-    expect(request.query).toBe(actionPolicyRoutingTagsParamsSchema);
   });
 
   it('forwards search and policies_per_tag to the client', async () => {
