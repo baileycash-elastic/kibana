@@ -562,9 +562,10 @@ export const ALERTING_LOG_CODES = {
    */
   SAVED_OBJECTS_TYPE_REGISTRATION_FAILED: 'SAVED_OBJECTS_TYPE_REGISTRATION_FAILED',
   /**
-   * Checking whether any v2 rule template exists failed. The
-   * `v2RuleTemplatesAvailable` capability stays false and the check is
-   * retried, so Rule Library stays hidden from navigation until it succeeds.
+   * The startup check for whether any v2 rule template exists failed. The
+   * `v2RuleTemplatesAvailable` capability stays false and the check is not
+   * repeated, so Rule Library stays hidden from navigation until Kibana
+   * restarts.
    */
   SAVED_OBJECTS_RULE_TEMPLATES_AVAILABILITY_CHECK_FAILED:
     'SAVED_OBJECTS_RULE_TEMPLATES_AVAILABILITY_CHECK_FAILED',

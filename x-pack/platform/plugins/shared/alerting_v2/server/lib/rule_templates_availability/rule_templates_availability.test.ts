@@ -12,8 +12,6 @@ import { createLoggerService } from '../services/logger_service/logger_service.m
 import { buildEngineV2Filter } from '../rule_templates_client';
 import { RuleTemplatesAvailability } from './rule_templates_availability';
 
-const RECHECK_INTERVAL_MS = 10_000;
-
 const findResponse = (total: number) => ({
   saved_objects: [],
   total,
@@ -22,30 +20,25 @@ const findResponse = (total: number) => ({
 });
 
 describe('RuleTemplatesAvailability', () => {
-  let currentTime: number;
   const savedObjects = savedObjectsServiceMock.createStartContract();
   const internalClient = savedObjectsClientMock.create();
   const { loggerService, mockLogger } = createLoggerService();
 
   const createAvailability = () =>
-    new RuleTemplatesAvailability({
-      getSavedObjects: () => savedObjects,
-      logger: loggerService,
-      recheckIntervalMs: RECHECK_INTERVAL_MS,
-      now: () => currentTime,
-    });
+    new RuleTemplatesAvailability({ getSavedObjects: () => savedObjects, logger: loggerService });
 
   beforeEach(() => {
     jest.clearAllMocks();
-    currentTime = 1_000_000;
     savedObjects.getUnsafeInternalClient.mockReturnValue(internalClient);
     internalClient.find.mockResolvedValue(findResponse(0));
   });
 
   it('queries v2 templates in every space with the internal client', async () => {
     internalClient.find.mockResolvedValue(findResponse(1));
+    const availability = createAvailability();
 
-    await expect(createAvailability().isAvailable()).resolves.toBe(true);
+    availability.start();
+    await expect(availability.isAvailable()).resolves.toBe(true);
 
     expect(savedObjects.getUnsafeInternalClient).toHaveBeenCalledWith({
       includedHiddenTypes: [RULE_TEMPLATE_SAVED_OBJECT_TYPE],
@@ -59,73 +52,53 @@ describe('RuleTemplatesAvailability', () => {
   });
 
   it('reports false when no v2 template exists', async () => {
-    await expect(createAvailability().isAvailable()).resolves.toBe(false);
-  });
-
-  it('runs the startup check without waiting for it', async () => {
-    internalClient.find.mockResolvedValue(findResponse(1));
     const availability = createAvailability();
 
     availability.start();
 
-    expect(internalClient.find).toHaveBeenCalledTimes(1);
-    await expect(availability.isAvailable()).resolves.toBe(true);
+    await expect(availability.isAvailable()).resolves.toBe(false);
+  });
+
+  it('runs the check as soon as it is started, without waiting for it', () => {
+    createAvailability().start();
+
     expect(internalClient.find).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    ['false', 0],
-    ['true', 1],
-  ])('does not recheck within the interval while %s', async (_, total) => {
-    internalClient.find.mockResolvedValue(findResponse(total));
+  it('reports false without querying before it is started', async () => {
     const availability = createAvailability();
 
+    await expect(availability.isAvailable()).resolves.toBe(false);
+
+    expect(savedObjects.getUnsafeInternalClient).not.toHaveBeenCalled();
+    expect(internalClient.find).not.toHaveBeenCalled();
+  });
+
+  it('runs the check exactly once and never re-checks', async () => {
+    internalClient.find.mockResolvedValue(findResponse(1));
+    const availability = createAvailability();
+
+    availability.start();
+    availability.start();
     await availability.isAvailable();
-    currentTime += RECHECK_INTERVAL_MS - 1;
-    await expect(availability.isAvailable()).resolves.toBe(total > 0);
+    internalClient.find.mockResolvedValue(findResponse(0));
+    await expect(availability.isAvailable()).resolves.toBe(true);
 
     expect(internalClient.find).toHaveBeenCalledTimes(1);
   });
 
-  it('rechecks once the interval has elapsed and picks up templates installed later', async () => {
+  it('keeps reporting false for templates installed after startup', async () => {
     const availability = createAvailability();
 
+    availability.start();
     await expect(availability.isAvailable()).resolves.toBe(false);
-
     internalClient.find.mockResolvedValue(findResponse(2));
-    currentTime += RECHECK_INTERVAL_MS;
-
-    await expect(availability.isAvailable()).resolves.toBe(true);
-    expect(internalClient.find).toHaveBeenCalledTimes(2);
-  });
-
-  it('rechecks once the interval has elapsed and notices templates being removed', async () => {
-    internalClient.find.mockResolvedValue(findResponse(1));
-    const availability = createAvailability();
-
-    await expect(availability.isAvailable()).resolves.toBe(true);
-
-    internalClient.find.mockResolvedValue(findResponse(0));
-    currentTime += RECHECK_INTERVAL_MS;
 
     await expect(availability.isAvailable()).resolves.toBe(false);
-    expect(internalClient.find).toHaveBeenCalledTimes(2);
+    expect(internalClient.find).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the last known answer when a later check fails', async () => {
-    internalClient.find.mockResolvedValue(findResponse(1));
-    const availability = createAvailability();
-
-    await expect(availability.isAvailable()).resolves.toBe(true);
-
-    internalClient.find.mockRejectedValue(new Error('es unavailable'));
-    currentTime += RECHECK_INTERVAL_MS;
-
-    await expect(availability.isAvailable()).resolves.toBe(true);
-    expect(mockLogger.warn).toHaveBeenCalledTimes(1);
-  });
-
-  it('shares one in-flight check between concurrent callers', async () => {
+  it('makes callers that arrive during the startup check wait for its result', async () => {
     let resolveFind: (value: ReturnType<typeof findResponse>) => void = () => {};
     internalClient.find.mockReturnValue(
       new Promise((resolve) => {
@@ -134,22 +107,21 @@ describe('RuleTemplatesAvailability', () => {
     );
     const availability = createAvailability();
 
-    const results = Promise.all([
-      availability.isAvailable(),
-      availability.isAvailable(),
-      availability.isAvailable(),
-    ]);
+    availability.start();
+    const results = Promise.all([availability.isAvailable(), availability.isAvailable()]);
     resolveFind(findResponse(1));
 
-    await expect(results).resolves.toEqual([true, true, true]);
+    await expect(results).resolves.toEqual([true, true]);
     expect(internalClient.find).toHaveBeenCalledTimes(1);
   });
 
-  it('logs a warning and reports false when the check fails, then recovers on a later check', async () => {
-    const error = new Error('type is not registered');
-    internalClient.find.mockRejectedValueOnce(error);
+  it('logs a warning and reports false when the check fails, without retrying', async () => {
+    internalClient.find.mockRejectedValue(new Error('type is not registered'));
     const availability = createAvailability();
 
+    availability.start();
+
+    await expect(availability.isAvailable()).resolves.toBe(false);
     await expect(availability.isAvailable()).resolves.toBe(false);
 
     expect(mockLogger.warn).toHaveBeenCalledTimes(1);
@@ -160,11 +132,7 @@ describe('RuleTemplatesAvailability', () => {
         }),
       })
     );
-
-    internalClient.find.mockResolvedValue(findResponse(1));
-    currentTime += RECHECK_INTERVAL_MS;
-
-    await expect(availability.isAvailable()).resolves.toBe(true);
+    expect(internalClient.find).toHaveBeenCalledTimes(1);
   });
 
   it('does not throw from the startup check when the saved objects contract throws', async () => {
