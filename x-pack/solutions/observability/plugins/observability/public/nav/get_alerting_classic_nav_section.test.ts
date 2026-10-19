@@ -74,6 +74,35 @@ describe('getAlertingClassicNavSection', () => {
     ]);
   });
 
+  it('lists Rule Library after Alerts when the user has v2 rules read and templates exist', () => {
+    setCapabilities(core, { ...V2_CAPABILITIES, alertingVTwo: { v2RuleTemplatesAvailable: true } });
+
+    expect(getEntries(core)).toEqual([
+      { label: 'Alerts', app: 'observabilityAlerting', path: '/alerts' },
+      { label: 'Rule Library', app: 'observabilityAlerting', path: '/rule-library' },
+      { label: 'Action Policies', app: 'observabilityAlerting', path: '/action-policies' },
+      { label: 'Execution History', app: 'observabilityAlerting', path: '/execution-history' },
+    ]);
+  });
+
+  it('hides Rule Library when templates exist but the user lacks v2 rules read', () => {
+    setCapabilities(core, {
+      alerting_v2_alerts: { read: true },
+      alertingVTwo: { v2RuleTemplatesAvailable: true },
+    });
+
+    expect(getEntries(core).map(({ label }) => label)).not.toContain('Rule Library');
+  });
+
+  it('hides Rule Library when the user has v2 rules read but no templates exist', () => {
+    setCapabilities(core, {
+      ...V2_CAPABILITIES,
+      alertingVTwo: { v2RuleTemplatesAvailable: false },
+    });
+
+    expect(getEntries(core).map(({ label }) => label)).not.toContain('Rule Library');
+  });
+
   it('lists only the destinations the user has v2 privileges for', () => {
     setCapabilities(core, { alerting_v2_action_policies: { read: true } });
 

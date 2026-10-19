@@ -9,9 +9,11 @@ import type { CoreStart } from '@kbn/core-lifecycle-browser';
 import { coreMock } from '@kbn/core/public/mocks';
 import {
   canAccessAlertingV2Rules,
+  canShowRuleLibraryNavLink,
   hasAlertingV2Capability,
   isAlertingV2AvailableInSolution,
   isAlertingV2Enabled,
+  isRuleTemplatesAvailable,
   shouldShowAlertingV2CreateRuleFlyout,
   shouldShowV1ObservabilityAlertsTable,
 } from './is_alerting_v2_enabled';
@@ -264,5 +266,75 @@ describe('canAccessAlertingV2Rules', () => {
     core.settings.globalClient.get = <T>(_key: string) => false as T;
 
     expect(canAccessAlertingV2Rules(core)).toBe(false);
+  });
+});
+
+describe('isRuleTemplatesAvailable', () => {
+  const withSystemCapabilities = (systemCapabilities: Record<string, boolean> | undefined) => {
+    const core = coreMock.createStart();
+    const { alertingVTwo: _alertingVTwo, ...capabilities } = core.application.capabilities;
+
+    return systemCapabilities
+      ? { ...capabilities, alertingVTwo: systemCapabilities }
+      : capabilities;
+  };
+
+  it('returns true when the server reports rule templates', () => {
+    expect(
+      isRuleTemplatesAvailable(withSystemCapabilities({ v2RuleTemplatesAvailable: true }))
+    ).toBe(true);
+  });
+
+  it('returns false when the server reports no rule templates', () => {
+    expect(
+      isRuleTemplatesAvailable(withSystemCapabilities({ v2RuleTemplatesAvailable: false }))
+    ).toBe(false);
+  });
+
+  it('returns false when the capability is not registered', () => {
+    expect(isRuleTemplatesAvailable(withSystemCapabilities(undefined))).toBe(false);
+    expect(isRuleTemplatesAvailable(withSystemCapabilities({}))).toBe(false);
+  });
+});
+
+describe('canShowRuleLibraryNavLink', () => {
+  const createCore = ({
+    rules,
+    templatesAvailable,
+  }: {
+    rules?: Record<string, boolean>;
+    templatesAvailable?: boolean;
+  }): CoreStart => {
+    const core = coreMock.createStart();
+    core.application.capabilities = {
+      ...core.application.capabilities,
+      ...(rules ? { alerting_v2_rules: rules } : {}),
+      ...(templatesAvailable === undefined
+        ? {}
+        : { alertingVTwo: { v2RuleTemplatesAvailable: templatesAvailable } }),
+    };
+
+    return core;
+  };
+
+  it.each([
+    ['read', { read: true }],
+    ['all', { all: true }],
+  ])('returns true with rules %s access and templates available', (_, rules) => {
+    expect(canShowRuleLibraryNavLink(createCore({ rules, templatesAvailable: true }))).toBe(true);
+  });
+
+  it('returns false without rules read access, even when templates are available', () => {
+    expect(canShowRuleLibraryNavLink(createCore({ templatesAvailable: true }))).toBe(false);
+    expect(
+      canShowRuleLibraryNavLink(createCore({ rules: { read: false }, templatesAvailable: true }))
+    ).toBe(false);
+  });
+
+  it('returns false when no templates are available, even with rules read access', () => {
+    expect(
+      canShowRuleLibraryNavLink(createCore({ rules: { read: true }, templatesAvailable: false }))
+    ).toBe(false);
+    expect(canShowRuleLibraryNavLink(createCore({ rules: { read: true } }))).toBe(false);
   });
 });

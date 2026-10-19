@@ -6,6 +6,7 @@
  */
 
 import type { AppDeepLink, AppDeepLinkLocations, Capabilities } from '@kbn/core/public';
+import { isRuleTemplatesAvailable } from '@kbn/alerting-v2-utils';
 import { i18n } from '@kbn/i18n';
 import { hasObservabilityCapabilities } from '@kbn/observability-shared-plugin/public';
 import { hasObservabilityAlertingCapabilities } from './application/has_observability_alerting_privilege';
@@ -26,6 +27,9 @@ import {
 } from './constants';
 
 const SEARCHABLE_VISIBLE_IN: AppDeepLinkLocations[] = ['globalSearch', 'projectSideNav'];
+
+/** Rule Library stays searchable with the privilege alone; the nav entry also needs templates. */
+const RULE_LIBRARY_SEARCH_ONLY_VISIBLE_IN: AppDeepLinkLocations[] = ['globalSearch'];
 
 /**
  * Same gate as the Observability classic nav (`updateGlobalNavigation`), plus Alerting v2 alerts
@@ -49,6 +53,10 @@ const canAccessDeepLink = (id: string, capabilities: Capabilities): boolean => {
       const { v2 } = hasObservabilityAlertingCapabilities(capabilities, 'rules');
       return v2;
     }
+    case OBSERVABILITY_ALERTING_RULE_LIBRARY_DEEP_LINK_ID: {
+      const { v2 } = hasObservabilityAlertingCapabilities(capabilities, 'rules');
+      return v2;
+    }
     case OBSERVABILITY_ALERTING_ACTION_POLICIES_DEEP_LINK_ID: {
       const { v2 } = hasObservabilityAlertingCapabilities(capabilities, 'actionPolicies');
       return v2;
@@ -68,6 +76,12 @@ const getAccessibleVisibleIn = (
 ): AppDeepLinkLocations[] => {
   if (!canAccessDeepLink(link.id, capabilities)) {
     return [];
+  }
+
+  if (link.id === OBSERVABILITY_ALERTING_RULE_LIBRARY_DEEP_LINK_ID) {
+    return isRuleTemplatesAvailable(capabilities)
+      ? SEARCHABLE_VISIBLE_IN
+      : RULE_LIBRARY_SEARCH_ONLY_VISIBLE_IN;
   }
 
   if (

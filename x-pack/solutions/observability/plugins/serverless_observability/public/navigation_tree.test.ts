@@ -251,6 +251,36 @@ describe('Navigation Tree', () => {
     );
   });
 
+  describe('Rule Library link', () => {
+    const getRuleManagementLinks = (templatesAvailable: boolean) => {
+      core.settings.globalClient.get = <T>(_key: string) => true as T;
+      core.settings.globalClient.isDeclared = () => true;
+      core.application.capabilities = {
+        ...core.application.capabilities,
+        alerting_v2_rules: { read: true },
+        alertingVTwo: { v2RuleTemplatesAvailable: templatesAvailable },
+      };
+
+      const { body } = createNavigationTree({ core }) as NavigationTreeDefinition;
+      const alertsPanel = body.find(
+        (item) => 'id' in item && item.id === 'alerting' && item.renderAs === 'panelOpener'
+      );
+      const ruleManagement = alertsPanel?.children?.find(
+        (child) => 'title' in child && child.title === 'Rule Management'
+      );
+
+      return (ruleManagement?.children ?? []).map((child) => child.link);
+    };
+
+    it('is listed under Rule Management when v2 rule templates are available', () => {
+      expect(getRuleManagementLinks(true)).toContain('observabilityAlerting:rule-library');
+    });
+
+    it('is omitted when no v2 rule templates are available', () => {
+      expect(getRuleManagementLinks(false)).not.toContain('observabilityAlerting:rule-library');
+    });
+  });
+
   it('omits Alerting V2 Preview from Admin and Settings when alerting v2 is enabled', () => {
     core.settings.globalClient.get = <T>(_key: string) => true as T;
     core.settings.globalClient.isDeclared = () => true;

@@ -11,6 +11,7 @@ import type { PluginInitializerContext } from '@kbn/core/server';
 import type { ContainerModuleLoadOptions } from 'inversify';
 import { EsServiceInternalToken } from '../lib/services/es_service/tokens';
 import { ChangeHistoryClientToken } from '../lib/rule_changes_history';
+import { RuleTemplatesAvailabilityToken } from '../lib/rule_templates_availability';
 import { ResourceManager } from '../lib/services/resource_service/resource_manager';
 import { initializeResources } from '../resources/register_resources';
 import { scheduleApiKeyInvalidationTask } from '../lib/tasks/invalidate_pending_api_keys/schedule_task';
@@ -52,6 +53,8 @@ export function bindOnStart({ bind }: ContainerModuleLoadOptions) {
     });
 
     initSubscribers(container);
+
+    container.get(RuleTemplatesAvailabilityToken).start();
 
     try {
       await installAlertingV2ManagedWorkflows(

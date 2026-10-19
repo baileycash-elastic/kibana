@@ -78,6 +78,10 @@ export class ObservabilityAlertingPage {
   public readonly episodeDetailsPage: Locator;
   public readonly ruleDetailLayout: Locator;
   public readonly toasts: Locator;
+  public readonly ruleLibraryNavLink: Locator;
+  public readonly globalSearchButton: Locator;
+  public readonly globalSearchInput: Locator;
+  public readonly globalSearchOptions: Locator;
 
   constructor(private readonly page: ScoutPage, private readonly kbnUrl: KibanaUrl) {
     this.pageTitle = this.page.testSubj.locator(APP_HEADER_TEST_SUBJECTS.title);
@@ -110,6 +114,13 @@ export class ObservabilityAlertingPage {
     this.episodeDetailsPage = this.page.testSubj.locator('alertingV2AlertDetailsPage');
     this.ruleDetailLayout = this.page.testSubj.locator('ruleDetailLayout');
     this.toasts = this.page.components.toast().toasts;
+    // Entry id comes from the classic nav label: `observability-nav-<app>-<label_snake_case>`.
+    this.ruleLibraryNavLink = this.page.testSubj.locator(
+      'observability-nav-observabilityAlerting-rule_library'
+    );
+    this.globalSearchButton = this.page.testSubj.locator('kbnChromeHeader-searchButton');
+    this.globalSearchInput = this.page.testSubj.locator('nav-search-input');
+    this.globalSearchOptions = this.page.testSubj.locator('nav-search-option');
   }
 
   urlFor(path: string): string {
@@ -126,6 +137,15 @@ export class ObservabilityAlertingPage {
       timeout: 60_000,
     });
     return this.page.url();
+  }
+
+  /** Opens global search and types `query`, leaving the matching options in `globalSearchOptions`. */
+  async searchGlobalNav(query: string): Promise<void> {
+    if (!(await this.globalSearchInput.isVisible())) {
+      await this.globalSearchButton.click();
+      await this.globalSearchInput.waitFor({ state: 'visible' });
+    }
+    await this.globalSearchInput.fill(query);
   }
 
   async clickV1RulesTab(): Promise<void> {

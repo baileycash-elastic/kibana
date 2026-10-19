@@ -9,6 +9,7 @@ import type { PanelOpenerChildDefinition, RootNodeDefinition } from '@kbn/core-c
 import type { CoreStart } from '@kbn/core/public';
 import { i18n } from '@kbn/i18n';
 import {
+  canShowRuleLibraryNavLink,
   hasAlertingV2Capability,
   isAlertingV2Enabled,
   shouldShowV1ObservabilityAlertsTable,
@@ -110,6 +111,9 @@ const getRuleManagementSection = (core: CoreStart): PanelOpenerChildDefinition[]
   if (canReadV2Rules) {
     rulesChildren.push({ link: obsAlertingLink('rules-v2') });
     rulesChildren.push({ link: obsAlertingLink('rules-v1'), sideNavStatus: 'hidden' });
+    if (canShowRuleLibraryNavLink(core)) {
+      rulesChildren.push({ link: obsAlertingLink('rule-library') });
+    }
   } else {
     rulesChildren.push({
       link: obsAlertingLink('rules-v1'),

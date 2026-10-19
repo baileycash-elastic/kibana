@@ -10,6 +10,7 @@
     "@kbn/shared-ux-router",
     "@kbn/alerting-v2-plugin",
     "@kbn/alerting-v2-constants",
+    "@kbn/alerting-v2-utils",
     "@kbn/deeplinks-observability",
     "@kbn/kibana-react-plugin",
     "@kbn/scout-oblt",

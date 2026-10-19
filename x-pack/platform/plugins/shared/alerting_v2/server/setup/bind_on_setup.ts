@@ -19,6 +19,11 @@ import type {
 } from '../types';
 import { registerFeaturePrivileges } from '../lib/security/privileges';
 import { registerSavedObjects } from '../saved_objects';
+import {
+  RuleTemplatesAvailability,
+  RuleTemplatesAvailabilityToken,
+  registerRuleTemplatesCapabilities,
+} from '../lib/rule_templates_availability';
 import { EventLoggerToken } from '../lib/services/event_log_service/tokens';
 import { LoggerServiceToken } from '../lib/services/logger_service/logger_service';
 import { registerCreateAlertEventStep } from '../lib/workflow_extensions/register_create_alert_event_step';
@@ -52,6 +57,18 @@ export function bindOnSetup({ bind }: ContainerModuleLoadOptions) {
         )
       ),
       logger: container.get(LoggerServiceToken).forSubsystem('savedObjects'),
+    });
+
+    // The check needs the start-only saved objects contract, so it is resolved lazily and the
+    // startup check is kicked off from `bind_on_start`.
+    const ruleTemplatesAvailability = new RuleTemplatesAvailability({
+      getSavedObjects: () => container.get(CoreStart('savedObjects')),
+      logger: container.get(LoggerServiceToken).forSubsystem('savedObjects'),
+    });
+    container.bind(RuleTemplatesAvailabilityToken).toConstantValue(ruleTemplatesAvailability);
+    registerRuleTemplatesCapabilities({
+      capabilities: container.get(CoreSetup('capabilities')),
+      availability: ruleTemplatesAvailability,
     });
 
     const uiSettingsSetup = container.get(CoreSetup('uiSettings'));

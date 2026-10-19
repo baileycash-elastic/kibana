@@ -7,6 +7,7 @@
 
 export { RuleTemplatesClient } from './rule_templates_client';
 export { RuleTemplateSavedObjectsClientToken } from './tokens';
+export { buildEngineV2Filter } from './utils';
 export type {
   FindRuleTemplatesArgs,
   GetRuleTemplateArgs,

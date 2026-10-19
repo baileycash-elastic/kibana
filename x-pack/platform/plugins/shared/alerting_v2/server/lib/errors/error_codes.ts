@@ -561,6 +561,13 @@ export const ALERTING_LOG_CODES = {
    * process; distinct from a runtime document migration failure.
    */
   SAVED_OBJECTS_TYPE_REGISTRATION_FAILED: 'SAVED_OBJECTS_TYPE_REGISTRATION_FAILED',
+  /**
+   * Checking whether any v2 rule template exists failed. The
+   * `v2RuleTemplatesAvailable` capability stays false and the check is
+   * retried, so Rule Library stays hidden from navigation until it succeeds.
+   */
+  SAVED_OBJECTS_RULE_TEMPLATES_AVAILABILITY_CHECK_FAILED:
+    'SAVED_OBJECTS_RULE_TEMPLATES_AVAILABILITY_CHECK_FAILED',
 
   // ──────────────────────── Maintenance windows ──────────────────────
   /** Fetching active maintenance windows failed. */

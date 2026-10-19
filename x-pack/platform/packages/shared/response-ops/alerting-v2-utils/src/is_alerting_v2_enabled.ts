@@ -8,7 +8,9 @@
 import type { CoreStart } from '@kbn/core-lifecycle-browser';
 import {
   ALERTING_V2_ENABLED_SETTING_ID,
+  ALERTING_V2_RULE_TEMPLATES_AVAILABLE_CAPABILITY,
   ALERTING_V2_SHOW_V1_OBSERVABILITY_ALERTS_TABLE_SETTING_ID,
+  ALERTING_V2_SYSTEM_CAPABILITIES_ID,
 } from '@kbn/alerting-v2-constants';
 
 /**
@@ -113,4 +115,29 @@ export const shouldShowV1ObservabilityAlertsTable = (core: CoreStart): boolean =
  */
 export const canAccessAlertingV2Rules = (core: CoreStart): boolean => {
   return isAlertingV2Enabled(core) && hasAlertingV2Capability(core, 'rules');
+};
+
+/**
+ * Returns whether the server found at least one v2 rule template (the `v2RuleTemplatesAvailable`
+ * system capability). Rule Library has nothing to show without one.
+ */
+export const isRuleTemplatesAvailable = (
+  capabilities: CoreStart['application']['capabilities']
+): boolean => {
+  const systemCapabilities = capabilities[ALERTING_V2_SYSTEM_CAPABILITIES_ID] as
+    | Record<string, boolean>
+    | undefined;
+
+  return systemCapabilities?.[ALERTING_V2_RULE_TEMPLATES_AVAILABLE_CAPABILITY] === true;
+};
+
+/**
+ * Returns whether the Rule Library entry should be listed in navigation: rules read access
+ * ({@link hasAlertingV2Capability}) plus at least one rule template ({@link isRuleTemplatesAvailable}).
+ */
+export const canShowRuleLibraryNavLink = (core: CoreStart): boolean => {
+  return (
+    hasAlertingV2Capability(core, 'rules') &&
+    isRuleTemplatesAvailable(core.application.capabilities)
+  );
 };

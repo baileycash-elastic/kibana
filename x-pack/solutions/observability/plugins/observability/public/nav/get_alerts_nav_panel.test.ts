@@ -283,6 +283,41 @@ describe('getAlertsNavPanel', () => {
       ]);
     });
 
+    it('adds the Rule Library link when the user has v2 rules read and templates exist', () => {
+      setCapabilities(core, {
+        alerting_v2_rules: { read: true },
+        alertingVTwo: { v2RuleTemplatesAvailable: true },
+      });
+
+      expect(getSectionByTitle(core, 'Rule Management')?.children).toEqual([
+        { link: 'observabilityAlerting:rules-v2' },
+        { link: 'observabilityAlerting:rules-v1', sideNavStatus: 'hidden' },
+        { link: 'observabilityAlerting:rule-library' },
+      ]);
+    });
+
+    it('omits the Rule Library link when templates exist but the user only has v1 rules read', () => {
+      setCapabilities(core, {
+        management: { insightsAndAlerting: { triggersActionsRules: true } },
+        alertingVTwo: { v2RuleTemplatesAvailable: true },
+      });
+
+      expect(getSectionByTitle(core, 'Rule Management')?.children).toEqual([
+        { link: 'observabilityAlerting:rules-v1', title: 'Rules' },
+      ]);
+    });
+
+    it('omits the Rule Library link when the templates capability is false', () => {
+      setCapabilities(core, {
+        alerting_v2_rules: { read: true },
+        alertingVTwo: { v2RuleTemplatesAvailable: false },
+      });
+
+      expect(getSectionByTitle(core, 'Rule Management')?.children).not.toContainEqual({
+        link: 'observabilityAlerting:rule-library',
+      });
+    });
+
     it('shows a visible v1 Rules link when the user only has v1 rules read', () => {
       setCapabilities(core, {
         management: { insightsAndAlerting: { triggersActionsRules: true } },

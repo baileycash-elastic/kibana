@@ -18,6 +18,7 @@ import { getObservabilityAlertingDeepLinks } from './get_observability_alerting_
 
 const SEARCHABLE: AppDeepLinkLocations[] = ['globalSearch', 'projectSideNav'];
 const ALERTS: AppDeepLinkLocations[] = [...SEARCHABLE, 'classicSideNav'];
+const SEARCH_ONLY: AppDeepLinkLocations[] = ['globalSearch'];
 
 const capabilities = (features: Record<string, Record<string, boolean>>): Capabilities =>
   ({
@@ -67,24 +68,24 @@ describe('getObservabilityAlertingDeepLinks', () => {
       });
     });
 
-    it('offers Rules V2 but not Rules V1 to a v2 rules-read user', () => {
+    it('offers Rules V2 but not Rules V1 to a v2 rules-read user, keeping Rule Library search-only', () => {
       expect(visibleInById(capabilities({ alerting_v2_rules: { read: true } }))).toEqual({
         [OBSERVABILITY_ALERTING_ALERTS_DEEP_LINK_ID]: [],
         [OBSERVABILITY_ALERTING_RULES_V1_DEEP_LINK_ID]: [],
         [OBSERVABILITY_ALERTING_RULES_V2_DEEP_LINK_ID]: SEARCHABLE,
-        [OBSERVABILITY_ALERTING_RULE_LIBRARY_DEEP_LINK_ID]: [],
+        [OBSERVABILITY_ALERTING_RULE_LIBRARY_DEEP_LINK_ID]: SEARCH_ONLY,
         [OBSERVABILITY_ALERTING_ACTION_POLICIES_DEEP_LINK_ID]: [],
         [OBSERVABILITY_ALERTING_EXECUTION_HISTORY_DEEP_LINK_ID]: [],
       });
     });
 
-    it('offers Rules V2 but hides Rule Library when the user has v2 rules write', () => {
+    it('offers Rules V2 and a search-only Rule Library when the user has v2 rules write', () => {
       expect(visibleInById(capabilities({ alerting_v2_rules: { all: true, read: true } }))).toEqual(
         {
           [OBSERVABILITY_ALERTING_ALERTS_DEEP_LINK_ID]: [],
           [OBSERVABILITY_ALERTING_RULES_V1_DEEP_LINK_ID]: [],
           [OBSERVABILITY_ALERTING_RULES_V2_DEEP_LINK_ID]: SEARCHABLE,
-          [OBSERVABILITY_ALERTING_RULE_LIBRARY_DEEP_LINK_ID]: [],
+          [OBSERVABILITY_ALERTING_RULE_LIBRARY_DEEP_LINK_ID]: SEARCH_ONLY,
           [OBSERVABILITY_ALERTING_ACTION_POLICIES_DEEP_LINK_ID]: [],
           [OBSERVABILITY_ALERTING_EXECUTION_HISTORY_DEEP_LINK_ID]: [],
         }
@@ -147,6 +148,53 @@ describe('getObservabilityAlertingDeepLinks', () => {
       );
       expect(result[OBSERVABILITY_ALERTING_RULES_V1_DEEP_LINK_ID]).toEqual(SEARCHABLE);
       expect(result[OBSERVABILITY_ALERTING_RULES_V2_DEEP_LINK_ID]).toEqual(SEARCHABLE);
+    });
+  });
+
+  describe('Rule Library', () => {
+    const ruleLibraryVisibleIn = (caps: Capabilities) =>
+      visibleInById(caps)[OBSERVABILITY_ALERTING_RULE_LIBRARY_DEEP_LINK_ID];
+
+    it('is listed in the project nav and search with v2 rules read and templates available', () => {
+      expect(
+        ruleLibraryVisibleIn(
+          capabilities({
+            alerting_v2_rules: { read: true },
+            alertingVTwo: { v2RuleTemplatesAvailable: true },
+          })
+        )
+      ).toEqual(SEARCHABLE);
+    });
+
+    it('stays searchable but leaves the nav with v2 rules read and no templates', () => {
+      expect(
+        ruleLibraryVisibleIn(
+          capabilities({
+            alerting_v2_rules: { read: true },
+            alertingVTwo: { v2RuleTemplatesAvailable: false },
+          })
+        )
+      ).toEqual(SEARCH_ONLY);
+    });
+
+    it('treats a missing templates capability as no templates', () => {
+      expect(ruleLibraryVisibleIn(capabilities({ alerting_v2_rules: { read: true } }))).toEqual(
+        SEARCH_ONLY
+      );
+    });
+
+    it('is hidden everywhere without v2 rules read, even when templates exist', () => {
+      expect(
+        ruleLibraryVisibleIn(capabilities({ alertingVTwo: { v2RuleTemplatesAvailable: true } }))
+      ).toEqual([]);
+      expect(
+        ruleLibraryVisibleIn(
+          capabilities({
+            logs: { show: true },
+            alertingVTwo: { v2RuleTemplatesAvailable: true },
+          })
+        )
+      ).toEqual([]);
     });
   });
 });
